@@ -58,21 +58,29 @@ Package or module changed (cli, core, web, shared)
 - Existing file modifications → fix/refactor
 - Mostly deletions → refactor
 
+## ⚠️ CRITICAL RULES
+
+1. **NEVER execute `git commit`** - Only suggest the message
+2. **NEVER run any git write commands** - No `git add`, `git commit`, `git push`
+3. **Wait for user confirmation** - User will copy and run the command themselves
+4. **Warn about sensitive files** - (.env, credentials, secrets)
+
+## Output Format
+
+Provide a simple `git commit -m "..."` command that can be copy-pasted directly.
+
+**Special character handling:**
+- Replace `"` (double quote) → `'` (single quote)
+- Replace `'` (single quote inside message) → `` ` `` (backtick)
+- Avoid `!`, `$`, `` ` `` at the start of words
+
 ## Example Output
 
-```
-feat(core): add GitHubAdapter for issue integration
+```bash
+git commit -m "feat(core): add GitHubAdapter for issue integration
 
 - Implement Octokit-based GitHub API client
 - Add issue fetching and PR creation
 - Generate branch names from issue titles
-- Parse GitHub issue/PR URLs
-
-Tested with 9 unit tests.
+- Parse GitHub issue/PR URLs"
 ```
-
-## Important
-
-- Do NOT execute the commit
-- Only suggest the message and wait for user confirmation
-- Warn if sensitive files (.env, credentials) are included
