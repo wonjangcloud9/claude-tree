@@ -4,7 +4,8 @@
   "description": "CLI for claudetree",
   "type": "module",
   "bin": {
-    "claudetree": "./dist/index.js"
+    "claudetree": "./dist/index.js",
+    "ct": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",

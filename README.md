@@ -1,14 +1,25 @@
 # claudetree
 
-Git Worktree-based Claude Code multi-session manager.
+**Run multiple Claude Code sessions in parallel** — each in its own isolated git worktree.
 
-Run multiple Claude Code sessions in parallel using git worktrees — one worktree per issue, each with its own Claude session.
+## Why claudetree?
+
+Claude Code is powerful, but it runs one session at a time in a single directory. What if you need to work on multiple issues simultaneously?
+
+**claudetree solves this** by leveraging git worktrees:
+- Each issue gets its own **isolated worktree** (separate directory, separate branch)
+- Each worktree can run its own **independent Claude Code session**
+- Multiple terminals = Multiple Claude sessions = **True parallel development**
+
+No more waiting. No more context switching. Just spin up worktrees and let multiple Claude instances work on different issues at the same time.
+
+> **Tip:** You can use `ct` as a shorthand for `claudetree` in all commands.
 
 ## How It Works
 
 ```
 Your Project (e.g., my-web-app/)
-├── .claudetree/              ← Created by `claudetree init`
+├── .claudetree/              ← Created by `ct init`
 │   └── config.json
 ├── .worktrees/               ← Worktrees live here
 │   ├── issue-42-fix-login/   ← Claude works here
@@ -45,20 +56,20 @@ cd packages/cli && pnpm link --global
 
 ```bash
 cd ~/projects/my-web-app    # Go to YOUR project
-claudetree init             # Initialize claudetree
+ct init                     # Initialize claudetree
 ```
 
 ### Step 2: Start working on an issue
 
 ```bash
 # From GitHub issue URL
-claudetree start https://github.com/you/my-web-app/issues/42
+ct start https://github.com/you/my-web-app/issues/42
 
 # Or just issue number (after configuring github in .claudetree/config.json)
-claudetree start 42
+ct start 42
 
 # Or a custom task name
-claudetree start add-dark-mode
+ct start add-dark-mode
 ```
 
 This creates:
@@ -75,25 +86,25 @@ claude    # Start Claude Code here
 ### Step 4: Monitor all sessions
 
 ```bash
-claudetree status    # See all session statuses
-claudetree web       # Open web dashboard at http://localhost:3000
+ct status    # See all session statuses
+ct web       # Open web dashboard at http://localhost:3000
 ```
 
 ## CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `claudetree init` | Initialize claudetree in your project |
-| `claudetree start <issue>` | Create worktree from issue/task |
-| `claudetree list` | List all worktrees |
-| `claudetree status` | Show all session statuses |
-| `claudetree stop [id]` | Stop a session |
-| `claudetree web` | Start web dashboard |
+| `ct init` | Initialize claudetree in your project |
+| `ct start <issue>` | Create worktree from issue/task |
+| `ct list` | List all worktrees |
+| `ct status` | Show all session statuses |
+| `ct stop [id]` | Stop a session |
+| `ct web` | Start web dashboard |
 
 ### Start Options
 
 ```bash
-claudetree start <issue> [options]
+ct start <issue> [options]
 
 Options:
   -p, --prompt <prompt>   Custom prompt for Claude
@@ -105,7 +116,7 @@ Options:
 
 ## Configuration
 
-After `claudetree init`, edit `.claudetree/config.json`:
+After `ct init`, edit `.claudetree/config.json`:
 
 ```json
 {
@@ -126,15 +137,15 @@ Set `GITHUB_TOKEN` environment variable for GitHub API access.
 cd ~/projects/my-web-app
 
 # Initialize (one-time)
-claudetree init
+ct init
 
 # Boss assigns you 3 issues to work on
-claudetree start 42 --no-session   # Login bug
-claudetree start 55 --no-session   # Add OAuth
-claudetree start 67 --no-session   # Fix typos
+ct start 42 --no-session   # Login bug
+ct start 55 --no-session   # Add OAuth
+ct start 67 --no-session   # Fix typos
 
 # Check what worktrees exist
-claudetree list
+ct list
 
 # Work on issue 42 with Claude
 cd .worktrees/issue-42-fix-login
@@ -145,76 +156,76 @@ cd .worktrees/issue-55-add-oauth
 claude
 
 # Monitor everything
-claudetree status
-claudetree web
+ct status
+ct web
 ```
 
 ## Web Dashboard
 
-웹 대시보드에서 모든 세션의 진행 상황을 실시간으로 확인할 수 있습니다.
+Monitor all sessions in real-time from the web dashboard.
 
-### 대시보드 시작
+### Start the Dashboard
 
 ```bash
-claudetree web    # http://localhost:3000
+ct web    # http://localhost:3000
 ```
 
-### 주요 기능
+### Features
 
-**1. 세션 목록 (메인 페이지)**
-- 모든 활성 세션 카드로 표시
-- 상태별 색상 구분 (running/pending/completed/failed)
-- 클릭하면 상세 페이지로 이동
+**1. Session List (Main Page)**
+- All active sessions displayed as cards
+- Color-coded by status (running/pending/completed/failed)
+- Click to navigate to detail page
 
-**2. 세션 상세 페이지 (`/sessions/:id`)**
+**2. Session Detail Page (`/sessions/:id`)**
 
-| 패널 | 설명 |
-|------|------|
-| **Terminal Output** | Claude의 실시간 터미널 출력 스트리밍 |
-| **Timeline** | 완료된 작업 히스토리 (파일 수정, 커밋, 테스트 등) |
-| **Tool Approvals** | Claude가 사용한 tool 목록 (Read, Write, Bash 등) |
-| **Code Review** | 변경사항 요약 및 승인/반려 버튼 |
+| Panel | Description |
+|-------|-------------|
+| **Terminal Output** | Real-time Claude terminal output streaming |
+| **Timeline** | Completed work history (file changes, commits, tests, etc.) |
+| **Tool Approvals** | List of tools used by Claude (Read, Write, Bash, etc.) |
+| **Code Review** | Change summary with approve/reject buttons |
 
-### 데이터 저장 위치
+### Data Storage
 
 ```
 .claudetree/
-├── sessions.json       # 세션 목록
-├── events/             # 세션별 이벤트 로그
+├── sessions.json       # Session list
+├── events/             # Per-session event logs
 │   └── {sessionId}.json
-├── approvals/          # Tool 승인 기록
+├── approvals/          # Tool approval records
 │   └── {sessionId}.json
-└── reviews/            # 코드 리뷰 정보
+└── reviews/            # Code review info
     └── {sessionId}.json
 ```
 
-### Worktree 자동 동기화
+### Auto-Sync Worktrees
 
-대시보드 접속 시 기존 worktree를 자동으로 감지하여 세션으로 등록합니다.
+Existing worktrees are automatically detected and registered as sessions when accessing the dashboard.
 
 ```bash
-# 수동으로 만든 worktree도 자동 인식
+# Manually created worktrees are auto-detected
 git worktree add .worktrees/my-feature -b my-feature
-claudetree web    # → 대시보드에 my-feature 세션 자동 추가
+ct web    # → my-feature session automatically added
 ```
 
-### WebSocket 실시간 업데이트
+### WebSocket Real-time Updates
 
-- 포트 3001에서 WebSocket 서버 실행
-- 세션 상태 변경 시 자동 새로고침
-- 이벤트 타입: `session:*`, `event:created`, `approval:*`, `review:*`
+- WebSocket server runs on port 3001
+- Auto-refresh on session state changes
+- Event types: `session:*`, `event:created`, `approval:*`, `review:*`
 
 ## Built-in Skills
 
 ### TDD Workflow
 ```bash
-claudetree start 42 --skill tdd
+ct start 42 --skill tdd
 ```
 Forces Test-Driven Development: write test first → implement → refactor
 
 ### Code Review
 ```bash
-claudetree start 42 --skill review
+ct start 42 --skill review
 ```
 Thorough code review with CRITICAL / WARNING / INFO levels
 
@@ -224,7 +235,7 @@ Thorough code review with CRITICAL / WARNING / INFO levels
 packages/
 ├── cli/      # CLI commands (Commander.js)
 ├── core/     # Domain + Infrastructure
-│   ├── application/  # SessionManager (이벤트/승인/리뷰 통합)
+│   ├── application/  # SessionManager (events/approvals/reviews)
 │   ├── domain/       # Repository interfaces
 │   ├── infra/
 │   │   ├── git/          # GitWorktreeAdapter
@@ -236,7 +247,7 @@ packages/
 └── web/      # Next.js dashboard
     ├── app/
     │   ├── api/sessions/   # REST API endpoints
-    │   └── sessions/[id]/  # 세션 상세 페이지
+    │   └── sessions/[id]/  # Session detail page
     └── components/
         ├── timeline/       # Timeline, TimelineEvent
         ├── terminal/       # TerminalOutput

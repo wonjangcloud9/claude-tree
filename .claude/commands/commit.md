@@ -67,20 +67,22 @@ Package or module changed (cli, core, web, shared)
 
 ## Output Format
 
-Provide a simple `git commit -m "..."` command that can be copy-pasted directly.
+Provide a simple `git commit -m '...'` command that can be copy-pasted directly.
+
+**IMPORTANT: Always use single quotes for commit messages.**
 
 **Special character handling:**
-- Replace `"` (double quote) → `'` (single quote)
+- Use `'` (single quote) to wrap the entire commit message
 - Replace `'` (single quote inside message) → `` ` `` (backtick)
 - Avoid `!`, `$`, `` ` `` at the start of words
 
 ## Example Output
 
 ```bash
-git commit -m "feat(core): add GitHubAdapter for issue integration
+git commit -m 'feat(core): add GitHubAdapter for issue integration
 
 - Implement Octokit-based GitHub API client
 - Add issue fetching and PR creation
 - Generate branch names from issue titles
-- Parse GitHub issue/PR URLs"
+- Parse GitHub issue/PR URLs'
 ```
