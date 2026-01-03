@@ -6,9 +6,12 @@ import {
   GitWorktreeAdapter,
   ClaudeSessionAdapter,
   FileSessionRepository,
+  FileEventRepository,
+  FileToolApprovalRepository,
   GitHubAdapter,
+  type ClaudeOutputEvent,
 } from '@claudetree/core';
-import type { Session, Issue } from '@claudetree/shared';
+import type { Session, Issue, EventType } from '@claudetree/shared';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -196,13 +199,74 @@ Please analyze this issue and suggest implementation steps. Follow TDD if approp
         console.log(`  Skill: ${options.skill}`);
       }
 
+      // Initialize event repositories
+      const eventRepo = new FileEventRepository(join(cwd, CONFIG_DIR));
+      const approvalRepo = new FileToolApprovalRepository(join(cwd, CONFIG_DIR));
+
+      // Setup event listener for recording
+      claudeAdapter.on('output', async (event: ClaudeOutputEvent) => {
+        const { output } = event;
+
+        // Map Claude output type to event type
+        let eventType: EventType = 'output';
+        if (output.type === 'tool_use') {
+          eventType = 'tool_call';
+
+          // Record tool approval request
+          try {
+            const parsed = parseToolCall(output.content);
+            if (parsed) {
+              await approvalRepo.save({
+                id: randomUUID(),
+                sessionId: session.id,
+                toolName: parsed.toolName,
+                parameters: parsed.parameters,
+                status: 'approved', // Auto-approved for now
+                approvedBy: 'auto',
+                requestedAt: output.timestamp,
+                resolvedAt: output.timestamp,
+              });
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        } else if (output.type === 'error') {
+          eventType = 'error';
+        }
+
+        // Record event
+        try {
+          await eventRepo.append({
+            id: randomUUID(),
+            sessionId: session.id,
+            type: eventType,
+            content: output.content,
+            timestamp: output.timestamp,
+          });
+        } catch {
+          // Ignore file write errors
+        }
+      });
+
       // Start Claude session
-      await claudeAdapter.start({
+      const result = await claudeAdapter.start({
         workingDir: worktreePath,
         prompt,
         systemPrompt,
         allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
       });
+
+      // Start collecting output in background
+      void (async () => {
+        for await (const _output of claudeAdapter.getOutput(result.processId)) {
+          // Output is processed by the event listener
+        }
+
+        // Session completed
+        session.status = 'completed';
+        session.updatedAt = new Date();
+        await sessionRepo.save(session);
+      })();
 
       // Update session
       session.status = 'running';
@@ -220,3 +284,20 @@ Please analyze this issue and suggest implementation steps. Follow TDD if approp
       process.exit(1);
     }
   });
+
+function parseToolCall(
+  content: string
+): { toolName: string; parameters: Record<string, unknown> } | null {
+  // Format: "ToolName: {json}"
+  const match = content.match(/^(\w+):\s*(.+)$/);
+  if (!match) return null;
+
+  try {
+    return {
+      toolName: match[1] ?? '',
+      parameters: JSON.parse(match[2] ?? '{}'),
+    };
+  } catch {
+    return null;
+  }
+}

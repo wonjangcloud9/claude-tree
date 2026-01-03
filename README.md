@@ -149,6 +149,51 @@ claudetree status
 claudetree web
 ```
 
+## Web Dashboard
+
+웹 대시보드에서 모든 세션의 진행 상황을 실시간으로 확인할 수 있습니다.
+
+### 대시보드 시작
+
+```bash
+claudetree web    # http://localhost:3000
+```
+
+### 주요 기능
+
+**1. 세션 목록 (메인 페이지)**
+- 모든 활성 세션 카드로 표시
+- 상태별 색상 구분 (running/pending/completed/failed)
+- 클릭하면 상세 페이지로 이동
+
+**2. 세션 상세 페이지 (`/sessions/:id`)**
+
+| 패널 | 설명 |
+|------|------|
+| **Terminal Output** | Claude의 실시간 터미널 출력 스트리밍 |
+| **Timeline** | 완료된 작업 히스토리 (파일 수정, 커밋, 테스트 등) |
+| **Tool Approvals** | Claude가 사용한 tool 목록 (Read, Write, Bash 등) |
+| **Code Review** | 변경사항 요약 및 승인/반려 버튼 |
+
+### 데이터 저장 위치
+
+```
+.claudetree/
+├── sessions.json       # 세션 목록
+├── events/             # 세션별 이벤트 로그
+│   └── {sessionId}.json
+├── approvals/          # Tool 승인 기록
+│   └── {sessionId}.json
+└── reviews/            # 코드 리뷰 정보
+    └── {sessionId}.json
+```
+
+### WebSocket 실시간 업데이트
+
+- 포트 3001에서 WebSocket 서버 실행
+- 세션 상태 변경 시 자동 새로고침
+- 이벤트 타입: `session:*`, `event:created`, `approval:*`, `review:*`
+
 ## Built-in Skills
 
 ### TDD Workflow
@@ -169,13 +214,24 @@ Thorough code review with CRITICAL / WARNING / INFO levels
 packages/
 ├── cli/      # CLI commands (Commander.js)
 ├── core/     # Domain + Infrastructure
-│   ├── git/          # GitWorktreeAdapter
-│   ├── claude/       # ClaudeSessionAdapter
-│   ├── github/       # GitHubAdapter (Octokit)
-│   ├── storage/      # FileSessionRepository
-│   └── websocket/    # WebSocketBroadcaster
-├── shared/   # Shared TypeScript types
+│   ├── application/  # SessionManager (이벤트/승인/리뷰 통합)
+│   ├── domain/       # Repository interfaces
+│   ├── infra/
+│   │   ├── git/          # GitWorktreeAdapter
+│   │   ├── claude/       # ClaudeSessionAdapter + EventEmitter
+│   │   ├── github/       # GitHubAdapter (Octokit)
+│   │   ├── storage/      # File*Repository (Session, Event, Approval, Review)
+│   │   └── websocket/    # WebSocketBroadcaster
+├── shared/   # TypeScript types (Session, Event, ToolApproval, CodeReview)
 └── web/      # Next.js dashboard
+    ├── app/
+    │   ├── api/sessions/   # REST API endpoints
+    │   └── sessions/[id]/  # 세션 상세 페이지
+    └── components/
+        ├── timeline/       # Timeline, TimelineEvent
+        ├── terminal/       # TerminalOutput
+        ├── approval/       # ApprovalList, ApprovalCard
+        └── review/         # CodeReviewPanel
 ```
 
 ## Branch Strategy

@@ -6,7 +6,12 @@ export type EventType =
   | 'session:stopped'
   | 'session:output'
   | 'worktree:created'
-  | 'worktree:deleted';
+  | 'worktree:deleted'
+  | 'event:created'
+  | 'approval:requested'
+  | 'approval:resolved'
+  | 'review:requested'
+  | 'review:resolved';
 
 export interface WSMessage {
   type: EventType;

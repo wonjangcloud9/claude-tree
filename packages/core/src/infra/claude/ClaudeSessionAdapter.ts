@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { execa, type ResultPromise } from 'execa';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -7,7 +8,15 @@ import type {
   ClaudeOutput,
 } from '../../domain/repositories/ISessionRepository.js';
 
-export class ClaudeSessionAdapter implements IClaudeSessionAdapter {
+export interface ClaudeOutputEvent {
+  processId: string;
+  output: ClaudeOutput;
+}
+
+export class ClaudeSessionAdapter
+  extends EventEmitter
+  implements IClaudeSessionAdapter
+{
   private processes = new Map<string, ResultPromise>();
 
   async start(config: ClaudeSessionConfig): Promise<ClaudeSessionResult> {
@@ -59,7 +68,15 @@ export class ClaudeSessionAdapter implements IClaudeSessionAdapter {
     for await (const chunk of proc.all) {
       const lines = chunk.toString().split('\n').filter(Boolean);
       for (const line of lines) {
-        yield this.parseStreamOutput(line);
+        const output = this.parseStreamOutput(line);
+
+        // Emit event for listeners
+        this.emit('output', {
+          processId,
+          output,
+        } as ClaudeOutputEvent);
+
+        yield output;
       }
     }
   }

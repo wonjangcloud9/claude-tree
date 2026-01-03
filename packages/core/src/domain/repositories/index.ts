@@ -6,3 +6,6 @@ export type {
   ClaudeSessionResult,
   ClaudeOutput,
 } from './ISessionRepository.js';
+export type { IEventRepository } from './IEventRepository.js';
+export type { IToolApprovalRepository } from './IToolApprovalRepository.js';
+export type { ICodeReviewRepository } from './ICodeReviewRepository.js';

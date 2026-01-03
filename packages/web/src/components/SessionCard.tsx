@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Session, SessionStatus } from '@claudetree/shared';
 
 interface SessionCardProps {
@@ -17,12 +18,19 @@ export function SessionCard({ session }: SessionCardProps) {
   const shortId = session.id.slice(0, 8);
 
   return (
-    <div style={{
-      background: 'var(--bg-secondary)',
-      border: '1px solid var(--border)',
-      borderRadius: '12px',
-      padding: '20px',
-    }}>
+    <Link
+      href={`/sessions/${session.id}`}
+      style={{
+        display: 'block',
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        padding: '20px',
+        textDecoration: 'none',
+        color: 'inherit',
+        transition: 'border-color 0.2s',
+      }}
+    >
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -79,7 +87,7 @@ export function SessionCard({ session }: SessionCardProps) {
         <span>Created: {formatDate(session.createdAt)}</span>
         <span>Updated: {formatDate(session.updatedAt)}</span>
       </div>
-    </div>
+    </Link>
   );
 }
 

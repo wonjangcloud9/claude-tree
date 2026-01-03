@@ -1,1 +1,4 @@
-export { ClaudeSessionAdapter } from './ClaudeSessionAdapter.js';
+export {
+  ClaudeSessionAdapter,
+  type ClaudeOutputEvent,
+} from './ClaudeSessionAdapter.js';
