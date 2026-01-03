@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type {
   Session,
@@ -16,9 +16,11 @@ import { CodeReviewPanel } from '@/components/review/CodeReviewPanel';
 
 export default function SessionDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
 
   const [session, setSession] = useState<Session | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [events, setEvents] = useState<SessionEvent[]>([]);
   const [approvals, setApprovals] = useState<ToolApproval[]>([]);
   const [review, setReview] = useState<CodeReview | null>(null);
@@ -92,6 +94,22 @@ export default function SessionDetailPage() {
     fetchData();
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Delete this session? This cannot be undone.')) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/');
+      } else {
+        alert('Failed to delete session');
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return <div style={{ padding: '24px' }}>Loading...</div>;
   }
@@ -110,14 +128,34 @@ export default function SessionDetailPage() {
   return (
     <main style={{ minHeight: '100vh', padding: '24px' }}>
       <div style={{ marginBottom: '24px' }}>
-        <Link href="/" style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-          ← Back to Dashboard
-        </Link>
-        <h1 style={{ fontSize: '24px', marginTop: '8px' }}>
-          {session.issueNumber ? `Issue #${session.issueNumber}` : `Session ${id.slice(0, 8)}`}
-        </h1>
-        <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Status: <strong>{session.status}</strong>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <Link href="/" style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+              ← Back to Dashboard
+            </Link>
+            <h1 style={{ fontSize: '24px', marginTop: '8px' }}>
+              {session.issueNumber ? `Issue #${session.issueNumber}` : `Session ${id.slice(0, 8)}`}
+            </h1>
+            <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+              Status: <strong>{session.status}</strong>
+            </div>
+          </div>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            style={{
+              padding: '8px 16px',
+              background: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: deleting ? 'not-allowed' : 'pointer',
+              opacity: deleting ? 0.5 : 1,
+              fontSize: '14px',
+            }}
+          >
+            {deleting ? 'Deleting...' : 'Delete Session'}
+          </button>
         </div>
       </div>
 

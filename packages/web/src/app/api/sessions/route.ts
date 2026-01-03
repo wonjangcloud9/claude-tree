@@ -10,6 +10,7 @@ const execAsync = promisify(exec);
 
 const CONFIG_DIR = '.claudetree';
 const SESSIONS_FILE = 'sessions.json';
+const DELETED_FILE = 'deleted.json';
 
 interface WorktreeInfo {
   path: string;
@@ -58,6 +59,16 @@ async function loadSessions(sessionsPath: string): Promise<Session[]> {
   }
 }
 
+async function loadDeletedWorktrees(cwd: string): Promise<Set<string>> {
+  try {
+    const deletedPath = join(cwd, CONFIG_DIR, DELETED_FILE);
+    const content = await readFile(deletedPath, 'utf-8');
+    return new Set(JSON.parse(content));
+  } catch {
+    return new Set();
+  }
+}
+
 async function saveSessions(sessionsPath: string, sessions: Session[]): Promise<void> {
   await mkdir(join(sessionsPath, '..'), { recursive: true });
   await writeFile(sessionsPath, JSON.stringify(sessions, null, 2));
@@ -73,8 +84,9 @@ export async function GET() {
     const cwd = process.cwd();
     const sessionsPath = join(cwd, CONFIG_DIR, SESSIONS_FILE);
 
-    // Load existing sessions
+    // Load existing sessions and deleted worktrees
     let sessions = await loadSessions(sessionsPath);
+    const deletedWorktrees = await loadDeletedWorktrees(cwd);
 
     // Get current worktrees
     const worktrees = await getWorktrees(cwd);
@@ -84,6 +96,9 @@ export async function GET() {
 
     for (const worktree of worktrees) {
       if (worktree.isMain) continue;
+
+      // Skip if this worktree was deleted by user
+      if (deletedWorktrees.has(worktree.path)) continue;
 
       const hasSession = sessions.some(
         (s) => s.worktreeId === worktree.path
