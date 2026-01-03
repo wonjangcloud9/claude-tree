@@ -6,7 +6,7 @@ Thank you for your interest in contributing!
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/claude-tree.git
+git clone https://github.com/wonjangcloud9/claude-tree.git
 cd claude-tree
 
 # Install dependencies
@@ -17,6 +17,9 @@ pnpm build
 
 # Run tests
 pnpm test
+
+# Link CLI globally for development
+cd packages/cli && pnpm link --global
 ```
 
 ## Project Structure
@@ -29,9 +32,31 @@ packages/
 └── web/      # Next.js dashboard (@claudetree/web)
 ```
 
+## Branch Strategy
+
+```
+main      ← stable releases (triggers npm publish)
+  ↑
+develop   ← integration branch (PRs target here)
+  ↑
+feature/* ← your work
+```
+
+### Starting New Work
+
+```bash
+# Start from develop
+git checkout develop
+git pull origin develop
+
+# Create your branch
+git checkout -b feature/my-feature
+# or: fix/bug-name, docs/update, refactor/cleanup
+```
+
 ## Development Workflow
 
-### TDD Approach
+### 1. TDD Approach
 
 We follow Test-Driven Development:
 
@@ -39,7 +64,7 @@ We follow Test-Driven Development:
 2. Implement minimal code to pass
 3. Refactor while keeping tests green
 
-### Running Tests
+### 2. Running Tests
 
 ```bash
 # Run all tests
@@ -52,7 +77,7 @@ pnpm test -- --watch
 pnpm --filter @claudetree/core test
 ```
 
-### Building
+### 3. Building
 
 ```bash
 # Build all packages
@@ -61,6 +86,25 @@ pnpm build
 # Build specific package
 pnpm --filter @claudetree/cli build
 ```
+
+## Recording Changes (Changesets)
+
+We use [Changesets](https://github.com/changesets/changesets) for versioning.
+
+After completing your work:
+
+```bash
+pnpm changeset
+```
+
+1. Select packages that changed
+2. Choose bump type:
+   - `patch`: Bug fixes (0.0.X)
+   - `minor`: New features (0.X.0)
+   - `major`: Breaking changes (X.0.0)
+3. Write a summary of changes
+
+This creates a file in `.changeset/` that will be used to generate CHANGELOG.
 
 ## Code Style
 
@@ -71,7 +115,7 @@ pnpm --filter @claudetree/cli build
 
 ## Commit Messages
 
-Format: `type: description`
+Format: `<type>(<scope>): <description>`
 
 Types:
 - `feat`: New feature
@@ -81,15 +125,32 @@ Types:
 - `test`: Adding tests
 - `chore`: Maintenance
 
-Example: `feat: add GitHub issue integration`
+Examples:
+```
+feat(cli): add GitHub issue integration
+fix(core): handle empty worktree list
+docs: update README with new commands
+```
 
 ## Pull Request Process
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/my-feature`
+2. Create a feature branch from `develop`
 3. Make your changes with tests
-4. Ensure all tests pass: `pnpm test`
-5. Submit a pull request
+4. Run `pnpm changeset` to record changes
+5. Ensure all tests pass: `pnpm test:run`
+6. Submit PR to `develop` branch
+7. After review, maintainers merge to develop
+8. Periodically, develop is merged to main for release
+
+## Release Process (Maintainers)
+
+When `develop` is stable:
+
+1. Create PR from `develop` to `main`
+2. Merge triggers Release workflow
+3. GitHub Action creates "Release PR" with version bumps
+4. Merge Release PR to publish to npm
 
 ## Questions?
 

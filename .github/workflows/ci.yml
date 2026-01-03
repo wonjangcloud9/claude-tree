@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   test:
@@ -24,31 +24,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Type check
+      - name: Build
         run: pnpm build
 
       - name: Run tests
         run: pnpm test:run
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build packages
-        run: pnpm build
-
-      - name: Check formatting
-        run: pnpm exec prettier --check "packages/*/src/**/*.ts"

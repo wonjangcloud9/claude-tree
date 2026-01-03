@@ -122,7 +122,7 @@ claudetree start 42 --skill review
 
 ```bash
 # Clone and setup
-git clone https://github.com/your-username/claude-tree.git
+git clone https://github.com/wonjangcloud9/claude-tree.git
 cd claude-tree
 pnpm install
 
@@ -132,8 +132,30 @@ pnpm build
 # Test
 pnpm test
 
-# Run CLI locally
-node packages/cli/dist/index.js --help
+# Link CLI globally
+cd packages/cli && pnpm link --global
+```
+
+## Branch Strategy
+
+```
+main      ← stable releases (npm publish)
+  ↑
+develop   ← integration (PRs go here)
+  ↑
+feature/* ← your work
+```
+
+We use [Changesets](https://github.com/changesets/changesets) for versioning:
+
+```bash
+# After completing work, record your changes
+pnpm changeset
+
+# This will prompt for:
+# - Which packages changed
+# - Semver bump type (patch/minor/major)
+# - Change description
 ```
 
 ## Architecture

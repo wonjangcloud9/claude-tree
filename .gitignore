@@ -33,3 +33,7 @@ pnpm-debug.log*
 .turbo/
 .eslintcache
 *.tsbuildinfo
+
+# claudetree
+.claudetree/
+.worktrees/
