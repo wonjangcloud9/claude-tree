@@ -2,15 +2,26 @@
 
 Git Worktree-based Claude Code multi-session manager.
 
-Manage multiple Claude Code sessions across git worktrees with a web dashboard for real-time monitoring.
+Run multiple Claude Code sessions in parallel using git worktrees — one worktree per issue, each with its own Claude session.
 
-## Features
+## How It Works
 
-- **Issue-based Workflow**: Create worktrees directly from GitHub issues
-- **Multi-session**: Run multiple Claude sessions in parallel
-- **Web Dashboard**: Real-time monitoring of all sessions
-- **Built-in Skills**: TDD and Code Review skills included
-- **GitHub Integration**: Automatic branch naming from issue titles
+```
+Your Project (e.g., my-web-app/)
+├── .claudetree/              ← Created by `claudetree init`
+│   └── config.json
+├── .worktrees/               ← Worktrees live here
+│   ├── issue-42-fix-login/   ← Claude works here
+│   └── issue-55-add-auth/    ← Another Claude works here
+├── src/
+└── ...
+```
+
+**The idea is simple:**
+1. You have a project with GitHub issues
+2. For each issue, claudetree creates a separate git worktree
+3. You can run Claude Code in each worktree independently
+4. Multiple issues = Multiple Claude sessions = Parallel work
 
 ## Installation
 
@@ -20,37 +31,60 @@ npm install -g @claudetree/cli
 pnpm add -g @claudetree/cli
 ```
 
+For development:
+```bash
+git clone https://github.com/wonjangcloud9/claude-tree.git
+cd claude-tree
+pnpm install && pnpm build
+cd packages/cli && pnpm link --global
+```
+
 ## Quick Start
 
+### Step 1: Initialize in your project
+
 ```bash
-# Initialize in your repository
-claudetree init
+cd ~/projects/my-web-app    # Go to YOUR project
+claudetree init             # Initialize claudetree
+```
 
-# Start from a GitHub issue URL
-claudetree start https://github.com/owner/repo/issues/42
+### Step 2: Start working on an issue
 
-# Or just the issue number (requires config)
+```bash
+# From GitHub issue URL
+claudetree start https://github.com/you/my-web-app/issues/42
+
+# Or just issue number (after configuring github in .claudetree/config.json)
 claudetree start 42
 
-# Start with TDD skill
-claudetree start 42 --skill tdd
+# Or a custom task name
+claudetree start add-dark-mode
+```
 
-# List all worktrees
-claudetree list
+This creates:
+- A new git branch: `issue-42-fix-login-bug`
+- A new worktree: `.worktrees/issue-42-fix-login-bug/`
 
-# Check session status
-claudetree status
+### Step 3: Work with Claude in that worktree
 
-# Start web dashboard
-claudetree web
+```bash
+cd .worktrees/issue-42-fix-login-bug
+claude    # Start Claude Code here
+```
+
+### Step 4: Monitor all sessions
+
+```bash
+claudetree status    # See all session statuses
+claudetree web       # Open web dashboard at http://localhost:3000
 ```
 
 ## CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `claudetree init` | Initialize claudetree in current repo |
-| `claudetree start <issue>` | Create worktree and start Claude session |
+| `claudetree init` | Initialize claudetree in your project |
+| `claudetree start <issue>` | Create worktree from issue/task |
 | `claudetree list` | List all worktrees |
 | `claudetree status` | Show all session statuses |
 | `claudetree stop [id]` | Stop a session |
@@ -62,16 +96,16 @@ claudetree web
 claudetree start <issue> [options]
 
 Options:
-  -p, --prompt <prompt>   Custom initial prompt
-  -s, --skill <skill>     Skill to activate (tdd, review)
+  -p, --prompt <prompt>   Custom prompt for Claude
+  -s, --skill <skill>     Activate skill (tdd, review)
   -b, --branch <branch>   Custom branch name
   -t, --token <token>     GitHub token
-  --no-session            Create worktree only
+  --no-session            Create worktree only (no Claude)
 ```
 
 ## Configuration
 
-After `claudetree init`, configure GitHub in `.claudetree/config.json`:
+After `claudetree init`, edit `.claudetree/config.json`:
 
 ```json
 {
@@ -85,78 +119,49 @@ After `claudetree init`, configure GitHub in `.claudetree/config.json`:
 
 Set `GITHUB_TOKEN` environment variable for GitHub API access.
 
-## Web Dashboard
-
-Start the dashboard to monitor all sessions:
+## Example Workflow
 
 ```bash
+# You're working on my-web-app
+cd ~/projects/my-web-app
+
+# Initialize (one-time)
+claudetree init
+
+# Boss assigns you 3 issues to work on
+claudetree start 42 --no-session   # Login bug
+claudetree start 55 --no-session   # Add OAuth
+claudetree start 67 --no-session   # Fix typos
+
+# Check what worktrees exist
+claudetree list
+
+# Work on issue 42 with Claude
+cd .worktrees/issue-42-fix-login
+claude
+
+# In another terminal, work on issue 55
+cd .worktrees/issue-55-add-oauth
+claude
+
+# Monitor everything
+claudetree status
 claudetree web
 ```
-
-- View all active sessions
-- Real-time status updates via WebSocket
-- Session details and prompts
 
 ## Built-in Skills
 
 ### TDD Workflow
-Enforces Test-Driven Development:
-- Write failing test first
-- Implement minimal code
-- Refactor
-
 ```bash
 claudetree start 42 --skill tdd
 ```
+Forces Test-Driven Development: write test first → implement → refactor
 
 ### Code Review
-Thorough code review with security focus:
-- CRITICAL / WARNING / INFO levels
-- Security, quality, test coverage
-
 ```bash
 claudetree start 42 --skill review
 ```
-
-## Development
-
-```bash
-# Clone and setup
-git clone https://github.com/wonjangcloud9/claude-tree.git
-cd claude-tree
-pnpm install
-
-# Build
-pnpm build
-
-# Test
-pnpm test
-
-# Link CLI globally
-cd packages/cli && pnpm link --global
-```
-
-## Branch Strategy
-
-```
-main      ← stable releases (npm publish)
-  ↑
-develop   ← integration (PRs go here)
-  ↑
-feature/* ← your work
-```
-
-We use [Changesets](https://github.com/changesets/changesets) for versioning:
-
-```bash
-# After completing work, record your changes
-pnpm changeset
-
-# This will prompt for:
-# - Which packages changed
-# - Semver bump type (patch/minor/major)
-# - Change description
-```
+Thorough code review with CRITICAL / WARNING / INFO levels
 
 ## Architecture
 
@@ -172,6 +177,18 @@ packages/
 ├── shared/   # Shared TypeScript types
 └── web/      # Next.js dashboard
 ```
+
+## Branch Strategy
+
+```
+main      ← stable releases (npm publish)
+  ↑
+develop   ← integration (PRs go here)
+  ↑
+feature/* ← your work
+```
+
+We use [Changesets](https://github.com/changesets/changesets) for versioning.
 
 ## Contributing
 
