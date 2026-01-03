@@ -1,0 +1,23 @@
+{
+  "name": "@claudetree/cli",
+  "version": "0.1.0",
+  "description": "CLI for claudetree",
+  "type": "module",
+  "bin": {
+    "claudetree": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@claudetree/core": "workspace:*",
+    "@claudetree/shared": "workspace:*",
+    "commander": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

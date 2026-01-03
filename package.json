@@ -1,0 +1,33 @@
+{
+  "name": "claudetree",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Git Worktree-based Claude Code multi-session manager",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/notwonjang/claude-tree.git"
+  },
+  "author": "Lucas",
+  "license": "MIT",
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "build": "pnpm run -r build",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint packages/*/src --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf packages/*/dist"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

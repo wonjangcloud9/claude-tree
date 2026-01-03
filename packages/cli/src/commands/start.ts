@@ -1,0 +1,222 @@
+import { Command } from 'commander';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { access, readFile } from 'node:fs/promises';
+import {
+  GitWorktreeAdapter,
+  ClaudeSessionAdapter,
+  FileSessionRepository,
+  GitHubAdapter,
+} from '@claudetree/core';
+import type { Session, Issue } from '@claudetree/shared';
+
+const CONFIG_DIR = '.claudetree';
+
+interface StartOptions {
+  prompt?: string;
+  noSession: boolean;
+  skill?: string;
+  branch?: string;
+  token?: string;
+}
+
+interface Config {
+  worktreeDir: string;
+  github?: {
+    token?: string;
+    owner?: string;
+    repo?: string;
+  };
+}
+
+async function loadConfig(cwd: string): Promise<Config | null> {
+  try {
+    const configPath = join(cwd, CONFIG_DIR, 'config.json');
+    await access(configPath);
+    const content = await readFile(configPath, 'utf-8');
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+export const startCommand = new Command('start')
+  .description('Create worktree from issue and start Claude session')
+  .argument('<issue>', 'Issue number, GitHub URL, or task name')
+  .option('-p, --prompt <prompt>', 'Initial prompt for Claude')
+  .option('--no-session', 'Create worktree without starting Claude')
+  .option('-s, --skill <skill>', 'Skill to activate (tdd, review)')
+  .option('-b, --branch <branch>', 'Custom branch name')
+  .option('-t, --token <token>', 'GitHub token (or use GITHUB_TOKEN env)')
+  .action(async (issue: string, options: StartOptions) => {
+    const cwd = process.cwd();
+    const config = await loadConfig(cwd);
+
+    if (!config) {
+      console.error('Error: claudetree not initialized. Run "claudetree init" first.');
+      process.exit(1);
+    }
+
+    let issueNumber: number | null = null;
+    let issueData: Issue | null = null;
+    let branchName: string;
+
+    // Check if it's a GitHub URL
+    const ghToken = options.token ?? process.env.GITHUB_TOKEN ?? config.github?.token;
+
+    if (issue.includes('github.com')) {
+      // Parse GitHub URL
+      if (!ghToken) {
+        console.error('Error: GitHub token required for URL. Set GITHUB_TOKEN or use --token.');
+        process.exit(1);
+      }
+
+      const ghAdapter = new GitHubAdapter(ghToken);
+      const parsed = ghAdapter.parseIssueUrl(issue);
+
+      if (!parsed) {
+        console.error('Error: Invalid GitHub URL format.');
+        process.exit(1);
+      }
+
+      console.log(`Fetching issue #${parsed.number} from ${parsed.owner}/${parsed.repo}...`);
+
+      try {
+        issueData = await ghAdapter.getIssue(parsed.owner, parsed.repo, parsed.number);
+        issueNumber = issueData.number;
+        branchName = options.branch ?? ghAdapter.generateBranchName(issueNumber, issueData.title);
+
+        console.log(`  Title: ${issueData.title}`);
+        console.log(`  Labels: ${issueData.labels.join(', ') || 'none'}`);
+      } catch (error) {
+        console.error(`Error: Failed to fetch issue. ${error instanceof Error ? error.message : ''}`);
+        process.exit(1);
+      }
+    } else {
+      // Parse as issue number or task name
+      const parsed = parseInt(issue, 10);
+      const isNumber = !isNaN(parsed);
+
+      if (isNumber && ghToken && config.github?.owner && config.github?.repo) {
+        // Try to fetch issue from configured repo
+        const ghAdapter = new GitHubAdapter(ghToken);
+        try {
+          console.log(`Fetching issue #${parsed}...`);
+          issueData = await ghAdapter.getIssue(config.github.owner, config.github.repo, parsed);
+          issueNumber = issueData.number;
+          branchName = options.branch ?? ghAdapter.generateBranchName(issueNumber, issueData.title);
+
+          console.log(`  Title: ${issueData.title}`);
+        } catch {
+          // Fall back to simple issue number
+          issueNumber = parsed;
+          branchName = options.branch ?? `issue-${issueNumber}`;
+        }
+      } else if (isNumber) {
+        issueNumber = parsed;
+        branchName = options.branch ?? `issue-${issueNumber}`;
+      } else {
+        branchName = options.branch ?? `task-${issue}`;
+      }
+    }
+
+    const worktreePath = join(cwd, config.worktreeDir, branchName);
+
+    // Create worktree
+    console.log(`\nCreating worktree: ${branchName}`);
+    const gitAdapter = new GitWorktreeAdapter(cwd);
+
+    try {
+      const worktree = await gitAdapter.create({
+        path: worktreePath,
+        branch: branchName,
+        issueNumber: issueNumber ?? undefined,
+      });
+
+      console.log(`  Branch: ${worktree.branch}`);
+      console.log(`  Path: ${worktree.path}`);
+
+      if (options.noSession) {
+        console.log('\nWorktree created. Use "cd" to navigate and start working.');
+        return;
+      }
+
+      // Check Claude availability
+      const claudeAdapter = new ClaudeSessionAdapter();
+      const available = await claudeAdapter.isClaudeAvailable();
+
+      if (!available) {
+        console.error('\nError: Claude CLI not found. Install it first.');
+        console.log('Worktree created but Claude session not started.');
+        return;
+      }
+
+      // Create session record
+      const sessionRepo = new FileSessionRepository(join(cwd, CONFIG_DIR));
+      const session: Session = {
+        id: randomUUID(),
+        worktreeId: worktree.id,
+        claudeSessionId: null,
+        status: 'pending',
+        issueNumber,
+        prompt: options.prompt ?? null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await sessionRepo.save(session);
+
+      // Build prompt
+      let prompt: string;
+      if (options.prompt) {
+        prompt = options.prompt;
+      } else if (issueData) {
+        prompt = `Working on Issue #${issueNumber}: "${issueData.title}"
+
+Issue Description:
+${issueData.body || 'No description provided.'}
+
+Please analyze this issue and suggest implementation steps. Follow TDD if appropriate.`;
+      } else if (issueNumber) {
+        prompt = `Working on issue #${issueNumber}. Please analyze and suggest implementation steps.`;
+      } else {
+        prompt = `Working on ${branchName}`;
+      }
+
+      // Add skill if specified
+      let systemPrompt: string | undefined;
+      if (options.skill === 'tdd') {
+        systemPrompt = 'Follow TDD workflow: write failing test first, then implement, then refactor.';
+      } else if (options.skill === 'review') {
+        systemPrompt = 'Review code thoroughly for security, quality, and best practices.';
+      }
+
+      console.log('\nStarting Claude session...');
+      if (systemPrompt) {
+        console.log(`  Skill: ${options.skill}`);
+      }
+
+      // Start Claude session
+      await claudeAdapter.start({
+        workingDir: worktreePath,
+        prompt,
+        systemPrompt,
+        allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
+      });
+
+      // Update session
+      session.status = 'running';
+      session.updatedAt = new Date();
+      await sessionRepo.save(session);
+
+      console.log(`\nSession started: ${session.id.slice(0, 8)}`);
+      console.log(`Working directory: ${worktreePath}`);
+      console.log('\nUse "claudetree status" to check progress.');
+
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(`Error: ${error.message}`);
+      }
+      process.exit(1);
+    }
+  });
