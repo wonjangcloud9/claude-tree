@@ -188,6 +188,16 @@ claudetree web    # http://localhost:3000
     └── {sessionId}.json
 ```
 
+### Worktree 자동 동기화
+
+대시보드 접속 시 기존 worktree를 자동으로 감지하여 세션으로 등록합니다.
+
+```bash
+# 수동으로 만든 worktree도 자동 인식
+git worktree add .worktrees/my-feature -b my-feature
+claudetree web    # → 대시보드에 my-feature 세션 자동 추가
+```
+
 ### WebSocket 실시간 업데이트
 
 - 포트 3001에서 WebSocket 서버 실행
