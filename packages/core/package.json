@@ -28,7 +28,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@claudetree/shared": "0.1.0",
+    "@claudetree/shared": "workspace:*",
     "execa": "^9.5.0",
     "octokit": "^4.1.0",
     "ws": "^8.18.0"
