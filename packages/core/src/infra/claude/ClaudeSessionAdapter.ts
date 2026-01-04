@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
+import { execa } from 'execa';
 import type {
   IClaudeSessionAdapter,
   ClaudeSessionConfig,
@@ -129,10 +130,12 @@ export class ClaudeSessionAdapter
   }
 
   async isClaudeAvailable(): Promise<boolean> {
-    return new Promise((resolve) => {
-      const proc = spawn('which', ['claude']);
-      proc.on('close', (code) => resolve(code === 0));
-    });
+    try {
+      await execa('which', ['claude']);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   buildArgs(config: ClaudeSessionConfig): string[] {
