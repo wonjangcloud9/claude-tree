@@ -11,14 +11,24 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "prepublishOnly": "pnpm build"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/notwonjang/claude-tree.git",
+    "directory": "packages/core"
+  },
+  "license": "MIT",
   "dependencies": {
-    "@claudetree/shared": "workspace:*",
+    "@claudetree/shared": "0.1.0",
     "execa": "^9.5.0",
     "octokit": "^4.1.0",
     "ws": "^8.18.0"

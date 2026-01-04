@@ -1,20 +1,38 @@
 {
   "name": "@claudetree/cli",
   "version": "0.1.0",
-  "description": "CLI for claudetree",
+  "description": "CLI for claudetree - Manage Claude sessions with git worktrees",
   "type": "module",
   "bin": {
     "claudetree": "./dist/index.js",
     "ct": "./dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "pnpm build"
   },
+  "keywords": [
+    "claude",
+    "cli",
+    "git",
+    "worktree",
+    "ai",
+    "session"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/notwonjang/claude-tree.git",
+    "directory": "packages/cli"
+  },
+  "license": "MIT",
   "dependencies": {
-    "@claudetree/core": "workspace:*",
-    "@claudetree/shared": "workspace:*",
+    "@claudetree/core": "0.1.0",
+    "@claudetree/shared": "0.1.0",
     "commander": "^13.0.0"
   },
   "devDependencies": {

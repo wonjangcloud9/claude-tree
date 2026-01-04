@@ -11,10 +11,20 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "prepublishOnly": "pnpm build"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/notwonjang/claude-tree.git",
+    "directory": "packages/shared"
+  },
+  "license": "MIT",
   "devDependencies": {
     "typescript": "^5.7.0"
   }
