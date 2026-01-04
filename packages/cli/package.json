@@ -31,8 +31,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@claudetree/core": "0.1.0",
-    "@claudetree/shared": "0.1.0",
+    "@claudetree/core": "workspace:*",
+    "@claudetree/shared": "workspace:*",
     "commander": "^13.0.0"
   },
   "devDependencies": {
