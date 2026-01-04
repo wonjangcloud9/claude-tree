@@ -125,19 +125,45 @@ export const startCommand = new Command('start')
 
     const worktreePath = join(cwd, config.worktreeDir, branchName);
 
-    // Create worktree
-    console.log(`\nCreating worktree: ${branchName}`);
+    // Check if worktree already exists
     const gitAdapter = new GitWorktreeAdapter(cwd);
+    const existingWorktrees = await gitAdapter.list();
+    const existingWorktree = existingWorktrees.find(
+      (wt) => wt.branch === branchName || wt.path.endsWith(branchName)
+    );
 
-    try {
-      const worktree = await gitAdapter.create({
-        path: worktreePath,
-        branch: branchName,
-        issueNumber: issueNumber ?? undefined,
-      });
+    let worktree: { id: string; path: string; branch: string };
 
+    if (existingWorktree) {
+      console.log(`\nUsing existing worktree: ${branchName}`);
+      worktree = {
+        id: randomUUID(),
+        path: existingWorktree.path,
+        branch: existingWorktree.branch,
+      };
       console.log(`  Branch: ${worktree.branch}`);
       console.log(`  Path: ${worktree.path}`);
+    } else {
+      console.log(`\nCreating worktree: ${branchName}`);
+
+      try {
+        worktree = await gitAdapter.create({
+          path: worktreePath,
+          branch: branchName,
+          issueNumber: issueNumber ?? undefined,
+        });
+
+        console.log(`  Branch: ${worktree.branch}`);
+        console.log(`  Path: ${worktree.path}`);
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error(`Error: ${error.message}`);
+        }
+        process.exit(1);
+      }
+    }
+
+    try {
 
       if (options.noSession) {
         console.log('\nWorktree created. Use "cd" to navigate and start working.');
@@ -174,16 +200,25 @@ export const startCommand = new Command('start')
       if (options.prompt) {
         prompt = options.prompt;
       } else if (issueData) {
-        prompt = `Working on Issue #${issueNumber}: "${issueData.title}"
+        prompt = `You are working on Issue #${issueNumber}: "${issueData.title}"
 
 Issue Description:
 ${issueData.body || 'No description provided.'}
 
-Please analyze this issue and suggest implementation steps. Follow TDD if appropriate.`;
+IMPORTANT: Do NOT just analyze or suggest. Actually IMPLEMENT the solution.
+
+Workflow:
+1. Read the relevant code files
+2. Write the code to solve this issue
+3. Run tests to verify your implementation
+4. When done, commit your changes with a clear message
+5. Create a PR to the develop branch
+
+Start implementing now.`;
       } else if (issueNumber) {
-        prompt = `Working on issue #${issueNumber}. Please analyze and suggest implementation steps.`;
+        prompt = `Working on issue #${issueNumber}. Implement the solution - do not just analyze.`;
       } else {
-        prompt = `Working on ${branchName}`;
+        prompt = `Working on ${branchName}. Implement any required changes.`;
       }
 
       // Add skill if specified
@@ -249,24 +284,17 @@ Please analyze this issue and suggest implementation steps. Follow TDD if approp
       });
 
       // Start Claude session
+      console.log('\n\x1b[33m[Debug]\x1b[0m Starting Claude process...');
+      console.log(`\x1b[33m[Debug]\x1b[0m Prompt: ${prompt.slice(0, 100)}...`);
+
       const result = await claudeAdapter.start({
-        workingDir: worktreePath,
+        workingDir: worktree.path,
         prompt,
         systemPrompt,
         allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
       });
 
-      // Start collecting output in background
-      void (async () => {
-        for await (const _output of claudeAdapter.getOutput(result.processId)) {
-          // Output is processed by the event listener
-        }
-
-        // Session completed
-        session.status = 'completed';
-        session.updatedAt = new Date();
-        await sessionRepo.save(session);
-      })();
+      console.log(`\x1b[33m[Debug]\x1b[0m Process started with ID: ${result.processId.slice(0, 8)}`);
 
       // Update session
       session.status = 'running';
@@ -274,8 +302,35 @@ Please analyze this issue and suggest implementation steps. Follow TDD if approp
       await sessionRepo.save(session);
 
       console.log(`\nSession started: ${session.id.slice(0, 8)}`);
-      console.log(`Working directory: ${worktreePath}`);
-      console.log('\nUse "claudetree status" to check progress.');
+      console.log(`Working directory: ${worktree.path}`);
+      console.log('Claude is now working on the issue...\n');
+      console.log('\x1b[33m[Debug]\x1b[0m Waiting for Claude output...\n');
+
+      // Wait for Claude to complete and show output
+      let outputCount = 0;
+      for await (const output of claudeAdapter.getOutput(result.processId)) {
+        outputCount++;
+        console.log(`\x1b[33m[Debug]\x1b[0m Received output #${outputCount}: type=${output.type}`);
+
+        if (output.type === 'text') {
+          console.log(output.content);
+        } else if (output.type === 'tool_use') {
+          console.log(`\x1b[36m[Tool]\x1b[0m ${output.content}`);
+        } else if (output.type === 'error') {
+          console.error(`\x1b[31m[Error]\x1b[0m ${output.content}`);
+        } else if (output.type === 'done') {
+          console.log(`\x1b[32m[Done]\x1b[0m Session ID: ${output.content}`);
+        }
+      }
+
+      console.log(`\x1b[33m[Debug]\x1b[0m Total outputs received: ${outputCount}`);
+
+      // Session completed
+      session.status = 'completed';
+      session.updatedAt = new Date();
+      await sessionRepo.save(session);
+
+      console.log('\nSession completed.');
 
     } catch (error) {
       if (error instanceof Error) {

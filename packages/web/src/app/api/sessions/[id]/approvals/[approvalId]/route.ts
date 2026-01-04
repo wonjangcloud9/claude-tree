@@ -19,7 +19,7 @@ export async function PATCH(request: Request, { params }: Params) {
       approvedBy?: string;
     };
 
-    const cwd = process.cwd();
+    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
     const approvalsPath = join(cwd, CONFIG_DIR, APPROVALS_DIR, `${id}.json`);
 
     let approvals: SerializedToolApproval[] = [];

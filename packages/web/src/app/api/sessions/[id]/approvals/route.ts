@@ -13,7 +13,7 @@ interface Params {
 export async function GET(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
-    const cwd = process.cwd();
+    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
     const approvalsPath = join(cwd, CONFIG_DIR, APPROVALS_DIR, `${id}.json`);
 
     let approvals: SerializedToolApproval[] = [];

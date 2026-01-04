@@ -18,7 +18,7 @@ interface Params {
 export async function GET(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
-    const cwd = process.cwd();
+    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
     const sessionsPath = join(cwd, CONFIG_DIR, SESSIONS_FILE);
 
     const content = await readFile(sessionsPath, 'utf-8');
@@ -38,7 +38,7 @@ export async function GET(_request: Request, { params }: Params) {
 export async function DELETE(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
-    const cwd = process.cwd();
+    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
     const sessionsPath = join(cwd, CONFIG_DIR, SESSIONS_FILE);
     const deletedPath = join(cwd, CONFIG_DIR, DELETED_FILE);
 
@@ -51,6 +51,14 @@ export async function DELETE(_request: Request, { params }: Params) {
     }
 
     const session = sessions[sessionIndex];
+
+    // Check if session is protected (develop/main branch)
+    if ((session as { isProtected?: boolean })?.isProtected) {
+      return NextResponse.json(
+        { error: 'Cannot delete protected session (develop/main branch)' },
+        { status: 403 }
+      );
+    }
 
     // Remove git worktree if it exists
     if (session?.worktreeId) {

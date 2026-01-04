@@ -17,7 +17,7 @@ export async function GET(request: Request, { params }: Params) {
     const limit = parseInt(url.searchParams.get('limit') ?? '50', 10);
     const offset = parseInt(url.searchParams.get('offset') ?? '0', 10);
 
-    const cwd = process.cwd();
+    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
     const eventsPath = join(cwd, CONFIG_DIR, EVENTS_DIR, `${id}.json`);
 
     let events: SerializedSessionEvent[] = [];

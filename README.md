@@ -2,25 +2,51 @@
 
 **Run multiple Claude Code sessions in parallel** — each in its own isolated git worktree.
 
+> **Tip:** You can use `ct` as a shorthand for `claudetree` in all commands.
+
 ## Why claudetree?
 
-Claude Code is powerful, but it runs one session at a time in a single directory. What if you need to work on multiple issues simultaneously?
+Claude Code is powerful, but it runs one session at a time in a single directory. What if you need to work on multiple issues simultaneously? Or delegate entire tasks to Claude without manual intervention?
 
-**claudetree solves this** by leveraging git worktrees:
-- Each issue gets its own **isolated worktree** (separate directory, separate branch)
-- Each worktree can run its own **independent Claude Code session**
-- Multiple terminals = Multiple Claude sessions = **True parallel development**
+**claudetree solves this** by combining git worktrees with automated Claude Code orchestration.
 
-No more waiting. No more context switching. Just spin up worktrees and let multiple Claude instances work on different issues at the same time.
+### Key Benefits
 
-> **Tip:** You can use `ct` as a shorthand for `claudetree` in all commands.
+| Benefit | Description |
+|---------|-------------|
+| **Multi-session Management** | Run multiple Claude sessions in parallel, each working on different issues |
+| **Isolated Workspaces** | Each task gets its own git worktree — no branch conflicts, no context pollution |
+| **Fire and Forget** | Just pass a GitHub issue URL and Claude handles the rest: read code, implement, test, commit, and create PR |
+| **Web Dashboard** | Monitor all sessions in real-time with a visual UI — track progress, view logs, manage sessions |
+| **Automatic Workflow** | Claude automatically commits changes and creates PRs when work is complete |
+| **Independent Context** | Each Claude session maintains its own context, preventing cross-task interference |
+
+### Use Cases
+
+- **Parallel Bug Fixes**: Work on multiple bug fixes simultaneously
+- **Feature Development**: Delegate feature implementation to Claude while you focus on architecture
+- **Code Reviews**: Let Claude implement changes while you review other PRs
+- **Batch Processing**: Queue up multiple issues and let Claude work through them
+
+## Important: Token Usage Warning
+
+claudetree delegates entire sessions to Claude Code, which means:
+
+- **High token consumption**: Each session runs autonomously, making multiple API calls
+- **Cost awareness**: A single issue resolution can consume thousands of tokens
+- **Recommended for**: Teams with Claude Pro/Team plans or sufficient API credits
+- **Monitor usage**: Use `ct status` or the web dashboard to track active sessions
+
+Consider using `--no-session` flag to create worktrees without starting Claude if you want manual control.
 
 ## How It Works
 
 ```
 Your Project (e.g., my-web-app/)
 ├── .claudetree/              ← Created by `ct init`
-│   └── config.json
+│   ├── config.json
+│   ├── sessions.json
+│   └── events/               ← Session logs
 ├── .worktrees/               ← Worktrees live here
 │   ├── issue-42-fix-login/   ← Claude works here
 │   └── issue-55-add-auth/    ← Another Claude works here
@@ -28,11 +54,11 @@ Your Project (e.g., my-web-app/)
 └── ...
 ```
 
-**The idea is simple:**
+**The workflow is simple:**
 1. You have a project with GitHub issues
-2. For each issue, claudetree creates a separate git worktree
-3. You can run Claude Code in each worktree independently
-4. Multiple issues = Multiple Claude sessions = Parallel work
+2. Run `ct start <issue-url>` — claudetree creates a worktree and starts Claude
+3. Claude reads the issue, implements the solution, runs tests, commits, and creates a PR
+4. Monitor progress via CLI (`ct status`) or web dashboard (`ct web`)
 
 ## Installation
 
@@ -59,35 +85,31 @@ cd ~/projects/my-web-app    # Go to YOUR project
 ct init                     # Initialize claudetree
 ```
 
-### Step 2: Start working on an issue
+### Step 2: Set up GitHub token
 
 ```bash
-# From GitHub issue URL
+export GITHUB_TOKEN="ghp_your_token_here"
+```
+
+### Step 3: Start working on an issue
+
+```bash
+# From GitHub issue URL — Claude starts automatically
 ct start https://github.com/you/my-web-app/issues/42
 
-# Or just issue number (after configuring github in .claudetree/config.json)
-ct start 42
-
-# Or a custom task name
-ct start add-dark-mode
+# Claude will:
+# 1. Create a worktree and branch
+# 2. Read the issue description
+# 3. Implement the solution
+# 4. Run tests
+# 5. Commit and create a PR
 ```
 
-This creates:
-- A new git branch: `issue-42-fix-login-bug`
-- A new worktree: `.worktrees/issue-42-fix-login-bug/`
-
-### Step 3: Work with Claude in that worktree
+### Step 4: Monitor progress
 
 ```bash
-cd .worktrees/issue-42-fix-login-bug
-claude    # Start Claude Code here
-```
-
-### Step 4: Monitor all sessions
-
-```bash
-ct status    # See all session statuses
-ct web       # Open web dashboard at http://localhost:3000
+ct status    # CLI status view
+ct web       # Web dashboard at http://localhost:3000
 ```
 
 ## CLI Commands
@@ -95,7 +117,7 @@ ct web       # Open web dashboard at http://localhost:3000
 | Command | Description |
 |---------|-------------|
 | `ct init` | Initialize claudetree in your project |
-| `ct start <issue>` | Create worktree from issue/task |
+| `ct start <issue>` | Create worktree and start Claude session |
 | `ct list` | List all worktrees |
 | `ct status` | Show all session statuses |
 | `ct stop [id]` | Stop a session |
@@ -114,6 +136,22 @@ Options:
   --no-session            Create worktree only (no Claude)
 ```
 
+### Examples
+
+```bash
+# Full automation — Claude does everything
+ct start https://github.com/you/repo/issues/42
+
+# Just create worktree, run Claude manually later
+ct start 42 --no-session
+
+# With TDD workflow
+ct start 42 --skill tdd
+
+# Custom prompt
+ct start 42 -p "Focus on performance optimization"
+```
+
 ## Configuration
 
 After `ct init`, edit `.claudetree/config.json`:
@@ -130,41 +168,9 @@ After `ct init`, edit `.claudetree/config.json`:
 
 Set `GITHUB_TOKEN` environment variable for GitHub API access.
 
-## Example Workflow
-
-```bash
-# You're working on my-web-app
-cd ~/projects/my-web-app
-
-# Initialize (one-time)
-ct init
-
-# Boss assigns you 3 issues to work on
-ct start 42 --no-session   # Login bug
-ct start 55 --no-session   # Add OAuth
-ct start 67 --no-session   # Fix typos
-
-# Check what worktrees exist
-ct list
-
-# Work on issue 42 with Claude
-cd .worktrees/issue-42-fix-login
-claude
-
-# In another terminal, work on issue 55
-cd .worktrees/issue-55-add-oauth
-claude
-
-# Monitor everything
-ct status
-ct web
-```
-
 ## Web Dashboard
 
 Monitor all sessions in real-time from the web dashboard.
-
-### Start the Dashboard
 
 ```bash
 ct web    # http://localhost:3000
@@ -172,48 +178,25 @@ ct web    # http://localhost:3000
 
 ### Features
 
-**1. Session List (Main Page)**
+**Session List (Main Page)**
 - All active sessions displayed as cards
 - Color-coded by status (running/pending/completed/failed)
-- Click to navigate to detail page
+- Protected sessions (develop/main) cannot be deleted
 
-**2. Session Detail Page (`/sessions/:id`)**
+**Session Detail Page**
 
 | Panel | Description |
 |-------|-------------|
-| **Terminal Output** | Real-time Claude terminal output streaming |
-| **Timeline** | Completed work history (file changes, commits, tests, etc.) |
-| **Tool Approvals** | List of tools used by Claude (Read, Write, Bash, etc.) |
+| **Terminal Output** | Real-time Claude output streaming |
+| **Timeline** | Work history (file changes, commits, tests) |
+| **Tool Approvals** | Tools used by Claude (Read, Write, Bash, etc.) |
 | **Code Review** | Change summary with approve/reject buttons |
 
-### Data Storage
+### Real-time Updates
 
-```
-.claudetree/
-├── sessions.json       # Session list
-├── events/             # Per-session event logs
-│   └── {sessionId}.json
-├── approvals/          # Tool approval records
-│   └── {sessionId}.json
-└── reviews/            # Code review info
-    └── {sessionId}.json
-```
-
-### Auto-Sync Worktrees
-
-Existing worktrees are automatically detected and registered as sessions when accessing the dashboard.
-
-```bash
-# Manually created worktrees are auto-detected
-git worktree add .worktrees/my-feature -b my-feature
-ct web    # → my-feature session automatically added
-```
-
-### WebSocket Real-time Updates
-
-- WebSocket server runs on port 3001
+- WebSocket server on port 3001
 - Auto-refresh on session state changes
-- Event types: `session:*`, `event:created`, `approval:*`, `review:*`
+- Live streaming of Claude output
 
 ## Built-in Skills
 
@@ -235,24 +218,16 @@ Thorough code review with CRITICAL / WARNING / INFO levels
 packages/
 ├── cli/      # CLI commands (Commander.js)
 ├── core/     # Domain + Infrastructure
-│   ├── application/  # SessionManager (events/approvals/reviews)
+│   ├── application/  # SessionManager
 │   ├── domain/       # Repository interfaces
-│   ├── infra/
-│   │   ├── git/          # GitWorktreeAdapter
-│   │   ├── claude/       # ClaudeSessionAdapter + EventEmitter
-│   │   ├── github/       # GitHubAdapter (Octokit)
-│   │   ├── storage/      # File*Repository (Session, Event, Approval, Review)
-│   │   └── websocket/    # WebSocketBroadcaster
-├── shared/   # TypeScript types (Session, Event, ToolApproval, CodeReview)
+│   └── infra/
+│       ├── git/          # GitWorktreeAdapter
+│       ├── claude/       # ClaudeSessionAdapter
+│       ├── github/       # GitHubAdapter (Octokit)
+│       ├── storage/      # File repositories
+│       └── websocket/    # WebSocketBroadcaster
+├── shared/   # TypeScript types
 └── web/      # Next.js dashboard
-    ├── app/
-    │   ├── api/sessions/   # REST API endpoints
-    │   └── sessions/[id]/  # Session detail page
-    └── components/
-        ├── timeline/       # Timeline, TimelineEvent
-        ├── terminal/       # TerminalOutput
-        ├── approval/       # ApprovalList, ApprovalCard
-        └── review/         # CodeReviewPanel
 ```
 
 ## Branch Strategy
@@ -262,10 +237,28 @@ main      ← stable releases (npm publish)
   ↑
 develop   ← integration (PRs go here)
   ↑
-feature/* ← your work
+feature/* ← your work (created by claudetree)
 ```
 
-We use [Changesets](https://github.com/changesets/changesets) for versioning.
+PRs are automatically created targeting the `develop` branch.
+
+## Comparison
+
+| Feature | Manual Claude | claudetree |
+|---------|--------------|------------|
+| Multiple sessions | One at a time | Unlimited parallel |
+| Context isolation | Shared directory | Separate worktrees |
+| Issue integration | Copy-paste | Automatic fetch |
+| Progress monitoring | Terminal only | Web dashboard |
+| PR creation | Manual | Automatic |
+| Session management | Manual | Centralized |
+
+## Limitations
+
+- **Token costs**: Autonomous sessions consume significant tokens
+- **Claude availability**: Requires Claude Code CLI installed
+- **Git worktrees**: Project must be a git repository
+- **GitHub integration**: Currently GitHub-only for issue fetching
 
 ## Contributing
 

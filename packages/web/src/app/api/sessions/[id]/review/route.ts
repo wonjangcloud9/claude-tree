@@ -13,7 +13,7 @@ interface Params {
 export async function GET(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
-    const cwd = process.cwd();
+    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
     const reviewPath = join(cwd, CONFIG_DIR, REVIEWS_DIR, `${id}.json`);
 
     try {
@@ -40,7 +40,7 @@ export async function PATCH(request: Request, { params }: Params) {
       comment?: string;
     };
 
-    const cwd = process.cwd();
+    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
     const reviewPath = join(cwd, CONFIG_DIR, REVIEWS_DIR, `${id}.json`);
 
     let review: SerializedCodeReview;

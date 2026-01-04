@@ -81,7 +81,7 @@ function extractIssueNumber(branch: string): number | null {
 
 export async function GET() {
   try {
-    const cwd = process.cwd();
+    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
     const sessionsPath = join(cwd, CONFIG_DIR, SESSIONS_FILE);
 
     // Load existing sessions and deleted worktrees

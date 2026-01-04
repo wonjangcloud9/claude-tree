@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
-import { execa, type ResultPromise } from 'execa';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { createInterface } from 'node:readline';
 import { randomUUID } from 'node:crypto';
 import type {
   IClaudeSessionAdapter,
@@ -17,32 +18,50 @@ export class ClaudeSessionAdapter
   extends EventEmitter
   implements IClaudeSessionAdapter
 {
-  private processes = new Map<string, ResultPromise>();
+  private processes = new Map<string, ChildProcess>();
 
   async start(config: ClaudeSessionConfig): Promise<ClaudeSessionResult> {
     const args = this.buildArgs(config);
     const processId = randomUUID();
 
-    const proc = execa('claude', args, {
+    console.log(`[ClaudeAdapter] Spawning: claude ${args.join(' ').slice(0, 100)}...`);
+    console.log(`[ClaudeAdapter] Working dir: ${config.workingDir}`);
+
+    const proc = spawn('claude', args, {
       cwd: config.workingDir,
-      all: true,
+      stdio: ['ignore', 'pipe', 'pipe'],  // stdin을 ignore로 변경
     });
+
+    proc.on('error', (err) => {
+      console.error(`[ClaudeAdapter] Process error: ${err.message}`);
+    });
+
+    proc.on('exit', (code, signal) => {
+      console.log(`[ClaudeAdapter] Process exited: code=${code}, signal=${signal}`);
+    });
+
+    if (proc.stderr) {
+      proc.stderr.on('data', (data) => {
+        console.error(`[ClaudeAdapter] stderr: ${data.toString()}`);
+      });
+    }
 
     this.processes.set(processId, proc);
 
     return {
       processId,
-      claudeSessionId: null, // Will be set when we get the result
+      claudeSessionId: null,
     };
   }
 
   async resume(sessionId: string, prompt: string): Promise<ClaudeSessionResult> {
     const processId = randomUUID();
 
-    const proc = execa('claude', [
+    const proc = spawn('claude', [
       '-p', prompt,
       '--resume', sessionId,
       '--output-format', 'stream-json',
+      '--verbose',
     ]);
 
     this.processes.set(processId, proc);
@@ -63,37 +82,65 @@ export class ClaudeSessionAdapter
 
   async *getOutput(processId: string): AsyncIterable<ClaudeOutput> {
     const proc = this.processes.get(processId);
-    if (!proc || !proc.all) return;
+    console.log(`[ClaudeAdapter] getOutput called for process: ${processId.slice(0, 8)}`);
 
-    for await (const chunk of proc.all) {
-      const lines = chunk.toString().split('\n').filter(Boolean);
-      for (const line of lines) {
-        const output = this.parseStreamOutput(line);
-
-        // Emit event for listeners
-        this.emit('output', {
-          processId,
-          output,
-        } as ClaudeOutputEvent);
-
-        yield output;
-      }
+    if (!proc) {
+      console.error(`[ClaudeAdapter] No process found for ID: ${processId.slice(0, 8)}`);
+      return;
     }
+
+    if (!proc.stdout) {
+      console.error(`[ClaudeAdapter] No stdout for process: ${processId.slice(0, 8)}`);
+      return;
+    }
+
+    console.log(`[ClaudeAdapter] Setting up readline for stdout...`);
+
+    const rl = createInterface({
+      input: proc.stdout,
+      crlfDelay: Infinity,
+    });
+
+    console.log(`[ClaudeAdapter] Starting to read lines...`);
+
+    for await (const line of rl) {
+      console.log(`[ClaudeAdapter] Raw line received (${line.length} chars)`);
+      if (!line.trim()) continue;
+
+      const output = this.parseStreamOutput(line);
+
+      this.emit('output', {
+        processId,
+        output,
+      } as ClaudeOutputEvent);
+
+      yield output;
+    }
+
+    console.log(`[ClaudeAdapter] Readline ended, waiting for process to close...`);
+
+    // Wait for process to exit
+    await new Promise<void>((resolve) => {
+      proc.on('close', () => {
+        console.log(`[ClaudeAdapter] Process closed`);
+        resolve();
+      });
+    });
   }
 
   async isClaudeAvailable(): Promise<boolean> {
-    try {
-      await execa('which', ['claude']);
-      return true;
-    } catch {
-      return false;
-    }
+    return new Promise((resolve) => {
+      const proc = spawn('which', ['claude']);
+      proc.on('close', (code) => resolve(code === 0));
+    });
   }
 
   buildArgs(config: ClaudeSessionConfig): string[] {
     const args: string[] = [
       '-p', config.prompt,
       '--output-format', 'stream-json',
+      '--verbose',
+      '--permission-mode', 'acceptEdits',  // 자동 승인
     ];
 
     if (config.allowedTools?.length) {
