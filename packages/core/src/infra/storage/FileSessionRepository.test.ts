@@ -27,6 +27,11 @@ describe('FileSessionRepository', () => {
     prompt: 'Test prompt',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
+    processId: null,
+    osProcessId: null,
+    lastHeartbeat: null,
+    errorCount: 0,
+    worktreePath: null,
     ...overrides,
   });
 

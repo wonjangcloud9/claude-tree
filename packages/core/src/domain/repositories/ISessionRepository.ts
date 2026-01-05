@@ -13,6 +13,7 @@ export interface IClaudeSessionAdapter {
   resume(sessionId: string, prompt: string): Promise<ClaudeSessionResult>;
   stop(processId: string): Promise<void>;
   getOutput(processId: string): AsyncIterable<ClaudeOutput>;
+  isProcessAlive(osProcessId: number): boolean;
 }
 
 export interface ClaudeSessionConfig {
@@ -26,6 +27,7 @@ export interface ClaudeSessionConfig {
 export interface ClaudeSessionResult {
   processId: string;
   claudeSessionId: string | null;
+  osProcessId: number | null;
 }
 
 export interface ClaudeOutput {

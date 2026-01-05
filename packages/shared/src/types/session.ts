@@ -14,6 +14,12 @@ export interface Session {
   prompt: string | null;
   createdAt: Date;
   updatedAt: Date;
+  // Recovery fields
+  processId: string | null;
+  osProcessId: number | null;
+  lastHeartbeat: Date | null;
+  errorCount: number;
+  worktreePath: string | null;
 }
 
 export interface CreateSessionInput {

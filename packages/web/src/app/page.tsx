@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SessionList } from '@/components/SessionList';
 import { Header } from '@/components/Header';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import type { Session } from '@claudetree/shared';
 
 export default function DashboardPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
@@ -22,30 +22,34 @@ export default function DashboardPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchSessions();
+  const wsUrl =
+    typeof window !== 'undefined'
+      ? `ws://${window.location.hostname}:3001`
+      : 'ws://localhost:3001';
 
-    // WebSocket connection
-    const wsUrl = `ws://${window.location.hostname}:3001`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
-    ws.onerror = () => setConnected(false);
-
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type?.startsWith('session:')) {
+  const { connectionState, retryCount, lastError, reconnect } = useWebSocket({
+    url: wsUrl,
+    onMessage: (message: unknown) => {
+      const msg = message as { type?: string };
+      if (msg.type?.startsWith('session:')) {
         fetchSessions();
       }
-    };
+    },
+  });
 
-    return () => ws.close();
+  useEffect(() => {
+    fetchSessions();
   }, [fetchSessions]);
 
   return (
     <main style={{ minHeight: '100vh', padding: '24px' }}>
-      <Header connected={connected} sessionCount={sessions.length} />
+      <Header
+        connectionState={connectionState}
+        retryCount={retryCount}
+        lastError={lastError}
+        onReconnect={reconnect}
+        sessionCount={sessions.length}
+      />
 
       {error && (
         <div style={{

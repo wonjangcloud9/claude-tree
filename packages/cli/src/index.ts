@@ -3,6 +3,7 @@
 import { program } from 'commander';
 import { initCommand } from './commands/init.js';
 import { listCommand } from './commands/list.js';
+import { resumeCommand } from './commands/resume.js';
 import { startCommand } from './commands/start.js';
 import { statusCommand } from './commands/status.js';
 import { stopCommand } from './commands/stop.js';
@@ -15,6 +16,7 @@ program
 
 program.addCommand(initCommand);
 program.addCommand(listCommand);
+program.addCommand(resumeCommand);
 program.addCommand(startCommand);
 program.addCommand(statusCommand);
 program.addCommand(stopCommand);

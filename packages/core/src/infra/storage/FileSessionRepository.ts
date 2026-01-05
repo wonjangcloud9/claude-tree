@@ -66,6 +66,7 @@ export class FileSessionRepository implements ISessionRepository {
       ...session,
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
+      lastHeartbeat: session.lastHeartbeat?.toISOString() ?? null,
     };
   }
 
@@ -74,11 +75,19 @@ export class FileSessionRepository implements ISessionRepository {
       ...data,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
+      // Backward compatibility defaults
+      processId: data.processId ?? null,
+      osProcessId: data.osProcessId ?? null,
+      lastHeartbeat: data.lastHeartbeat ? new Date(data.lastHeartbeat) : null,
+      errorCount: data.errorCount ?? 0,
+      worktreePath: data.worktreePath ?? null,
     };
   }
 }
 
-interface SerializedSession extends Omit<Session, 'createdAt' | 'updatedAt'> {
+interface SerializedSession
+  extends Omit<Session, 'createdAt' | 'updatedAt' | 'lastHeartbeat'> {
   createdAt: string;
   updatedAt: string;
+  lastHeartbeat: string | null;
 }

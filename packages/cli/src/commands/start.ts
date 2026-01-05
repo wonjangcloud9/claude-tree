@@ -191,6 +191,12 @@ export const startCommand = new Command('start')
         prompt: options.prompt ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
+        // Recovery fields
+        processId: null,
+        osProcessId: null,
+        lastHeartbeat: null,
+        errorCount: 0,
+        worktreePath: worktree.path,
       };
 
       await sessionRepo.save(session);
@@ -296,10 +302,29 @@ Start implementing now.`;
 
       console.log(`\x1b[33m[Debug]\x1b[0m Process started with ID: ${result.processId.slice(0, 8)}`);
 
-      // Update session
+      // Update session with process info
+      session.processId = result.processId;
+      session.osProcessId = result.osProcessId;
+      session.lastHeartbeat = new Date();
       session.status = 'running';
       session.updatedAt = new Date();
       await sessionRepo.save(session);
+
+      // Setup graceful shutdown
+      const handleShutdown = async () => {
+        console.log('\n[Info] Pausing session...');
+        session.status = 'paused';
+        session.updatedAt = new Date();
+        await sessionRepo.save(session);
+        console.log(`Session paused: ${session.id.slice(0, 8)}`);
+        if (session.claudeSessionId) {
+          console.log(`Resume with: claudetree resume ${session.id.slice(0, 8)}`);
+        }
+        process.exit(0);
+      };
+
+      process.on('SIGINT', handleShutdown);
+      process.on('SIGTERM', handleShutdown);
 
       console.log(`\nSession started: ${session.id.slice(0, 8)}`);
       console.log(`Working directory: ${worktree.path}`);
@@ -310,6 +335,7 @@ Start implementing now.`;
       let outputCount = 0;
       for await (const output of claudeAdapter.getOutput(result.processId)) {
         outputCount++;
+        session.lastHeartbeat = new Date();
         console.log(`\x1b[33m[Debug]\x1b[0m Received output #${outputCount}: type=${output.type}`);
 
         if (output.type === 'text') {
@@ -320,6 +346,16 @@ Start implementing now.`;
           console.error(`\x1b[31m[Error]\x1b[0m ${output.content}`);
         } else if (output.type === 'done') {
           console.log(`\x1b[32m[Done]\x1b[0m Session ID: ${output.content}`);
+          // Capture Claude session ID for resume
+          if (output.content) {
+            session.claudeSessionId = output.content;
+          }
+        }
+
+        // Update heartbeat periodically
+        if (outputCount % 10 === 0) {
+          session.updatedAt = new Date();
+          await sessionRepo.save(session);
         }
       }
 

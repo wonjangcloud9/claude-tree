@@ -70,6 +70,12 @@ export class WorktreeSyncService {
       prompt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      // Recovery fields
+      processId: null,
+      osProcessId: null,
+      lastHeartbeat: null,
+      errorCount: 0,
+      worktreePath: worktree.path,
     };
   }
 }

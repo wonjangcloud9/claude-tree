@@ -13,6 +13,7 @@ import { Timeline } from '@/components/timeline/Timeline';
 import { TerminalOutput } from '@/components/terminal/TerminalOutput';
 import { ApprovalList } from '@/components/approval/ApprovalList';
 import { CodeReviewPanel } from '@/components/review/CodeReviewPanel';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 export default function SessionDetailPage() {
   const params = useParams();
@@ -51,21 +52,24 @@ export default function SessionDetailPage() {
     }
   }, [id]);
 
-  useEffect(() => {
-    fetchData();
+  const wsUrl =
+    typeof window !== 'undefined'
+      ? `ws://${window.location.hostname}:3001`
+      : 'ws://localhost:3001';
 
-    const wsUrl = `ws://${window.location.hostname}:3001`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.payload?.sessionId === id) {
+  useWebSocket({
+    url: wsUrl,
+    onMessage: (message: unknown) => {
+      const msg = message as { payload?: { sessionId?: string } };
+      if (msg.payload?.sessionId === id) {
         fetchData();
       }
-    };
+    },
+  });
 
-    return () => ws.close();
-  }, [id, fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleApprove = async (approvalId: string) => {
     await fetch(`/api/sessions/${id}/approvals/${approvalId}`, {

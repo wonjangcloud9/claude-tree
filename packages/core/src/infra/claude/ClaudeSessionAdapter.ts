@@ -52,6 +52,7 @@ export class ClaudeSessionAdapter
     return {
       processId,
       claudeSessionId: null,
+      osProcessId: proc.pid ?? null,
     };
   }
 
@@ -70,7 +71,17 @@ export class ClaudeSessionAdapter
     return {
       processId,
       claudeSessionId: sessionId,
+      osProcessId: proc.pid ?? null,
     };
+  }
+
+  isProcessAlive(osProcessId: number): boolean {
+    try {
+      process.kill(osProcessId, 0);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async stop(processId: string): Promise<void> {
