@@ -38,6 +38,33 @@ export class GitHubAdapter {
     };
   }
 
+  async listIssues(
+    owner: string,
+    repo: string,
+    options?: { labels?: string; state?: 'open' | 'closed' | 'all' }
+  ): Promise<Issue[]> {
+    const { data } = await this.octokit.rest.issues.listForRepo({
+      owner,
+      repo,
+      labels: options?.labels,
+      state: options?.state ?? 'open',
+      per_page: 100,
+    });
+
+    return data
+      .filter((item) => !item.pull_request) // Exclude PRs
+      .map((item) => ({
+        number: item.number,
+        title: item.title,
+        body: item.body ?? '',
+        labels: item.labels.map((l) =>
+          typeof l === 'string' ? l : l.name ?? ''
+        ),
+        state: item.state as 'open' | 'closed',
+        url: item.html_url,
+      }));
+  }
+
   async createPR(input: CreatePRInput): Promise<PRResult> {
     const { data } = await this.octokit.rest.pulls.create({
       owner: input.owner,

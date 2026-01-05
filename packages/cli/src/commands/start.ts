@@ -9,9 +9,12 @@ import {
   FileEventRepository,
   FileToolApprovalRepository,
   GitHubAdapter,
+  TemplateLoader,
+  DEFAULT_TEMPLATES,
+  SlackNotifier,
   type ClaudeOutputEvent,
 } from '@claudetree/core';
-import type { Session, Issue, EventType } from '@claudetree/shared';
+import type { Session, Issue, EventType, SessionTemplate } from '@claudetree/shared';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -21,6 +24,7 @@ interface StartOptions {
   skill?: string;
   branch?: string;
   token?: string;
+  template?: string;
 }
 
 interface Config {
@@ -29,6 +33,9 @@ interface Config {
     token?: string;
     owner?: string;
     repo?: string;
+  };
+  slack?: {
+    webhookUrl?: string;
   };
 }
 
@@ -49,6 +56,7 @@ export const startCommand = new Command('start')
   .option('-p, --prompt <prompt>', 'Initial prompt for Claude')
   .option('--no-session', 'Create worktree without starting Claude')
   .option('-s, --skill <skill>', 'Skill to activate (tdd, review)')
+  .option('-T, --template <template>', 'Session template (bugfix, feature, refactor, review)')
   .option('-b, --branch <branch>', 'Custom branch name')
   .option('-t, --token <token>', 'GitHub token (or use GITHUB_TOKEN env)')
   .action(async (issue: string, options: StartOptions) => {
@@ -201,6 +209,26 @@ export const startCommand = new Command('start')
 
       await sessionRepo.save(session);
 
+      // Load template if specified
+      let template: SessionTemplate | null = null;
+      if (options.template) {
+        const templateLoader = new TemplateLoader(join(cwd, CONFIG_DIR));
+        template = await templateLoader.load(options.template);
+
+        // Fall back to default templates
+        if (!template && options.template in DEFAULT_TEMPLATES) {
+          template = DEFAULT_TEMPLATES[options.template] ?? null;
+        }
+
+        if (!template) {
+          console.error(`Error: Template "${options.template}" not found.`);
+          console.log('Available templates: bugfix, feature, refactor, review');
+          process.exit(1);
+        }
+
+        console.log(`  Template: ${template.name}`);
+      }
+
       // Build prompt
       let prompt: string;
       if (options.prompt) {
@@ -227,17 +255,31 @@ Start implementing now.`;
         prompt = `Working on ${branchName}. Implement any required changes.`;
       }
 
-      // Add skill if specified
+      // Apply template to prompt
+      if (template) {
+        const prefix = template.promptPrefix ? `${template.promptPrefix}\n\n` : '';
+        const suffix = template.promptSuffix ? `\n\n${template.promptSuffix}` : '';
+        prompt = `${prefix}${prompt}${suffix}`;
+      }
+
+      // Add skill if specified (template skill takes precedence)
       let systemPrompt: string | undefined;
-      if (options.skill === 'tdd') {
+      const effectiveSkill = template?.skill || options.skill;
+
+      if (effectiveSkill === 'tdd') {
         systemPrompt = 'Follow TDD workflow: write failing test first, then implement, then refactor.';
-      } else if (options.skill === 'review') {
+      } else if (effectiveSkill === 'review') {
         systemPrompt = 'Review code thoroughly for security, quality, and best practices.';
       }
 
+      // Template system prompt overrides
+      if (template?.systemPrompt) {
+        systemPrompt = template.systemPrompt;
+      }
+
       console.log('\nStarting Claude session...');
-      if (systemPrompt) {
-        console.log(`  Skill: ${options.skill}`);
+      if (effectiveSkill) {
+        console.log(`  Skill: ${effectiveSkill}`);
       }
 
       // Initialize event repositories
@@ -368,7 +410,32 @@ Start implementing now.`;
 
       console.log('\nSession completed.');
 
+      // Send Slack notification
+      if (config.slack?.webhookUrl) {
+        const slack = new SlackNotifier(config.slack.webhookUrl);
+        await slack.notifySession({
+          sessionId: session.id,
+          status: 'completed',
+          issueNumber,
+          branch: branchName,
+          worktreePath: worktree.path,
+          duration: Date.now() - session.createdAt.getTime(),
+        });
+      }
+
     } catch (error) {
+      // Send failure notification
+      if (config.slack?.webhookUrl) {
+        const slack = new SlackNotifier(config.slack.webhookUrl);
+        await slack.notifySession({
+          sessionId: 'unknown',
+          status: 'failed',
+          issueNumber,
+          branch: branchName,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+
       if (error instanceof Error) {
         console.error(`Error: ${error.message}`);
       }

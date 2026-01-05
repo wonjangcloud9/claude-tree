@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { program } from 'commander';
+import { batchCommand } from './commands/batch.js';
 import { initCommand } from './commands/init.js';
 import { listCommand } from './commands/list.js';
 import { resumeCommand } from './commands/resume.js';
@@ -14,6 +15,7 @@ program
   .description('Git Worktree-based Claude Code multi-session manager')
   .version('0.1.0');
 
+program.addCommand(batchCommand);
 program.addCommand(initCommand);
 program.addCommand(listCommand);
 program.addCommand(resumeCommand);
