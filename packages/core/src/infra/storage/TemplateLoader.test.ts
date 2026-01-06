@@ -191,6 +191,9 @@ describe('TemplateLoader', () => {
         expect(template.name).toBeDefined();
         expect(template.description).toBeDefined();
         expect(template.promptPrefix).toBeDefined();
+        expect(typeof template.name).toBe('string');
+        expect(typeof template.description).toBe('string');
+        expect(typeof template.promptPrefix).toBe('string');
       }
     });
   });
