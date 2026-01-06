@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Core domain and infrastructure for claudetree",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,7 +12,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc",
@@ -23,9 +24,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/notwonjang/claude-tree.git",
+    "url": "https://github.com/wonjangcloud9/claude-tree.git",
     "directory": "packages/core"
   },
+  "homepage": "https://github.com/wonjangcloud9/claude-tree#readme",
   "license": "MIT",
   "dependencies": {
     "@claudetree/shared": "workspace:*",

@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "CLI for claudetree - Manage Claude sessions with git worktrees",
   "type": "module",
   "bin": {
@@ -8,7 +8,8 @@
     "ct": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc",
@@ -26,9 +27,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/notwonjang/claude-tree.git",
+    "url": "https://github.com/wonjangcloud9/claude-tree.git",
     "directory": "packages/cli"
   },
+  "homepage": "https://github.com/wonjangcloud9/claude-tree#readme",
   "license": "MIT",
   "dependencies": {
     "@claudetree/core": "workspace:*",
