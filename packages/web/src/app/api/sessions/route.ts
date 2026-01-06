@@ -120,6 +120,7 @@ export async function GET() {
           errorCount: 0,
           worktreePath: worktree.path,
           usage: null,
+          progress: null,
         };
         sessions.push(newSession);
         hasChanges = true;

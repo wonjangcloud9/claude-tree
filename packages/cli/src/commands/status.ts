@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { join } from 'node:path';
 import { access } from 'node:fs/promises';
 import { FileSessionRepository } from '@claudetree/core';
+import type { ProgressStep, SessionProgress } from '@claudetree/shared';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -18,6 +19,38 @@ const STATUS_COLORS: Record<string, string> = {
   failed: '\x1b[31m',    // red
 };
 const RESET = '\x1b[0m';
+const DIM = '\x1b[2m';
+const GREEN = '\x1b[32m';
+const CYAN = '\x1b[36m';
+
+const STEP_LABELS: Record<ProgressStep, string> = {
+  analyzing: 'Analyzing',
+  implementing: 'Implementing',
+  testing: 'Testing',
+  committing: 'Committing',
+  creating_pr: 'Creating PR',
+};
+
+function renderProgressBar(progress: SessionProgress | null): string {
+  if (!progress) return '';
+
+  const steps: ProgressStep[] = ['analyzing', 'implementing', 'testing', 'committing', 'creating_pr'];
+  const completed = new Set(progress.completedSteps);
+  const current = progress.currentStep;
+
+  const bar = steps.map((step) => {
+    if (completed.has(step)) {
+      return `${GREEN}●${RESET}`; // Completed
+    } else if (step === current) {
+      return `${CYAN}◉${RESET}`; // Current (animated feel)
+    } else {
+      return `${DIM}○${RESET}`; // Pending
+    }
+  }).join('─');
+
+  const label = STEP_LABELS[current] ?? current;
+  return `    ${bar} ${DIM}${label}${RESET}`;
+}
 
 export const statusCommand = new Command('status')
   .description('Show status of all sessions')
@@ -69,6 +102,11 @@ export const statusCommand = new Command('status')
           console.log(`    Prompt: ${truncatedPrompt}`);
         }
         console.log(`    Created: ${session.createdAt.toLocaleString()}`);
+
+        // Display progress for running sessions
+        if (session.status === 'running' && session.progress) {
+          console.log(renderProgressBar(session.progress));
+        }
 
         // Display token usage
         if (session.usage) {

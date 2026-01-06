@@ -35,4 +35,5 @@ export interface ClaudeOutput {
   content: string;
   timestamp: Date;
   usage?: TokenUsage;
+  cumulativeCost?: number;
 }

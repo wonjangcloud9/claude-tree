@@ -193,6 +193,16 @@ export class ClaudeSessionAdapter
         };
       }
 
+      // Parse system events for cumulative cost
+      if (data.type === 'system' && data.subtype === 'cost_update') {
+        return {
+          type: 'text',
+          content: `[Cost Update] $${data.total_cost_usd?.toFixed(4) ?? '0.0000'}`,
+          timestamp,
+          cumulativeCost: data.total_cost_usd ?? 0,
+        };
+      }
+
       if (data.type === 'assistant' && data.message?.content) {
         const content = data.message.content[0];
 

@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { access, readFile } from 'node:fs/promises';
+import { execSync } from 'node:child_process';
 import {
   GitWorktreeAdapter,
   ClaudeSessionAdapter,
@@ -14,7 +15,7 @@ import {
   SlackNotifier,
   type ClaudeOutputEvent,
 } from '@claudetree/core';
-import type { Session, Issue, EventType, SessionTemplate } from '@claudetree/shared';
+import type { Session, Issue, EventType, SessionTemplate, ProgressStep, SessionProgress } from '@claudetree/shared';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -25,6 +26,9 @@ interface StartOptions {
   branch?: string;
   token?: string;
   template?: string;
+  maxCost?: number;
+  lint?: string;
+  gate?: boolean;
 }
 
 interface Config {
@@ -59,6 +63,9 @@ export const startCommand = new Command('start')
   .option('-T, --template <template>', 'Session template (bugfix, feature, refactor, review)')
   .option('-b, --branch <branch>', 'Custom branch name')
   .option('-t, --token <token>', 'GitHub token (or use GITHUB_TOKEN env)')
+  .option('--max-cost <cost>', 'Maximum cost in USD (stops session if exceeded)', parseFloat)
+  .option('--lint <command>', 'Lint command to run after Claude completes (e.g., "npm run lint")')
+  .option('--gate', 'Fail session if lint fails', false)
   .action(async (issue: string, options: StartOptions) => {
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
@@ -207,6 +214,12 @@ export const startCommand = new Command('start')
         worktreePath: worktree.path,
         // Token usage
         usage: null,
+        // Progress tracking
+        progress: {
+          currentStep: 'analyzing',
+          completedSteps: [],
+          startedAt: new Date(),
+        },
       };
 
       await sessionRepo.save(session);
@@ -269,7 +282,17 @@ Start implementing now.`;
       const effectiveSkill = template?.skill || options.skill;
 
       if (effectiveSkill === 'tdd') {
-        systemPrompt = 'Follow TDD workflow: write failing test first, then implement, then refactor.';
+        systemPrompt = `You MUST follow strict TDD (Test-Driven Development):
+
+1. RED: Write a failing test FIRST - never write implementation before tests
+2. GREEN: Write MINIMUM code to pass the test - no extra features
+3. REFACTOR: Clean up while keeping tests green
+
+Rules:
+- One test at a time
+- Commit after each phase: "test: ...", "feat: ...", "refactor: ..."
+- Run tests after every change
+- Create PR only when all tests pass`;
       } else if (effectiveSkill === 'review') {
         systemPrompt = 'Review code thoroughly for security, quality, and best practices.';
       }
@@ -282,6 +305,9 @@ Start implementing now.`;
       console.log('\nStarting Claude session...');
       if (effectiveSkill) {
         console.log(`  Skill: ${effectiveSkill}`);
+      }
+      if (options.maxCost) {
+        console.log(`  \x1b[33mBudget limit: $${options.maxCost.toFixed(2)}\x1b[0m`);
       }
 
       // Initialize event repositories
@@ -297,7 +323,7 @@ Start implementing now.`;
         if (output.type === 'tool_use') {
           eventType = 'tool_call';
 
-          // Record tool approval request
+          // Record tool approval request and update progress
           try {
             const parsed = parseToolCall(output.content);
             if (parsed) {
@@ -311,6 +337,15 @@ Start implementing now.`;
                 requestedAt: output.timestamp,
                 resolvedAt: output.timestamp,
               });
+
+              // Update progress based on tool usage
+              if (session.progress) {
+                const detectedStep = detectProgressStep(parsed.toolName, parsed.parameters);
+                if (detectedStep) {
+                  session.progress = updateProgress(session.progress, detectedStep);
+                  await sessionRepo.save(session);
+                }
+              }
             }
           } catch {
             // Ignore parse errors
@@ -377,10 +412,29 @@ Start implementing now.`;
 
       // Wait for Claude to complete and show output
       let outputCount = 0;
+      let currentCost = 0;
+      let budgetExceeded = false;
+
       for await (const output of claudeAdapter.getOutput(result.processId)) {
         outputCount++;
         session.lastHeartbeat = new Date();
         console.log(`\x1b[33m[Debug]\x1b[0m Received output #${outputCount}: type=${output.type}`);
+
+        // Track cumulative cost from system events
+        if (output.cumulativeCost !== undefined) {
+          currentCost = output.cumulativeCost;
+
+          // Budget check
+          if (options.maxCost && currentCost >= options.maxCost && !budgetExceeded) {
+            budgetExceeded = true;
+            console.log(`\x1b[31m[Budget]\x1b[0m Cost $${currentCost.toFixed(4)} exceeded limit $${options.maxCost.toFixed(4)}. Stopping session...`);
+            await claudeAdapter.stop(result.processId);
+            session.status = 'failed';
+            session.updatedAt = new Date();
+            await sessionRepo.save(session);
+            break;
+          }
+        }
 
         if (output.type === 'text') {
           console.log(output.content);
@@ -410,12 +464,35 @@ Start implementing now.`;
 
       console.log(`\x1b[33m[Debug]\x1b[0m Total outputs received: ${outputCount}`);
 
-      // Session completed
-      session.status = 'completed';
-      session.updatedAt = new Date();
-      await sessionRepo.save(session);
+      // Skip to end if budget was exceeded
+      if (budgetExceeded) {
+        console.log('\nSession stopped due to budget limit.');
+      } else {
+        // Session completed
+        session.status = 'completed';
+        session.updatedAt = new Date();
+        await sessionRepo.save(session);
 
-      console.log('\nSession completed.');
+        console.log('\nSession completed.');
+
+        // Run lint gate
+        if (options.lint) {
+          console.log('\n\x1b[36m[Gate]\x1b[0m Running lint check...\n');
+          console.log(`  \x1b[33mLint:\x1b[0m ${options.lint}`);
+          try {
+            execSync(options.lint, { cwd: worktree.path, stdio: 'inherit' });
+            console.log('  \x1b[32m✓ Lint passed\x1b[0m\n');
+          } catch {
+            console.log('  \x1b[31m✗ Lint failed\x1b[0m\n');
+            if (options.gate) {
+              console.log('\x1b[31m[Gate]\x1b[0m Session failed lint check.');
+              session.status = 'failed';
+              session.updatedAt = new Date();
+              await sessionRepo.save(session);
+            }
+          }
+        }
+      }
 
       // Send Slack notification
       if (config.slack?.webhookUrl) {
@@ -465,4 +542,58 @@ function parseToolCall(
   } catch {
     return null;
   }
+}
+
+function detectProgressStep(toolName: string, params: Record<string, unknown>): ProgressStep | null {
+  const command = String(params.command ?? '');
+
+  // Detect test running
+  if (toolName === 'Bash') {
+    if (command.includes('test') || command.includes('jest') || command.includes('vitest') || command.includes('pytest')) {
+      return 'testing';
+    }
+    if (command.includes('git commit')) {
+      return 'committing';
+    }
+    if (command.includes('gh pr create') || command.includes('git push')) {
+      return 'creating_pr';
+    }
+  }
+
+  // Detect code writing
+  if (toolName === 'Edit' || toolName === 'Write') {
+    return 'implementing';
+  }
+
+  // Detect code reading/analysis
+  if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
+    return 'analyzing';
+  }
+
+  return null;
+}
+
+function updateProgress(
+  progress: SessionProgress,
+  newStep: ProgressStep
+): SessionProgress {
+  const stepOrder: ProgressStep[] = ['analyzing', 'implementing', 'testing', 'committing', 'creating_pr'];
+  const currentIdx = stepOrder.indexOf(progress.currentStep);
+  const newIdx = stepOrder.indexOf(newStep);
+
+  // Only advance forward, don't go backwards
+  if (newIdx > currentIdx) {
+    // Mark all steps between current and new as completed
+    const completed = new Set(progress.completedSteps);
+    for (let i = 0; i <= currentIdx; i++) {
+      completed.add(stepOrder[i]!);
+    }
+    return {
+      ...progress,
+      currentStep: newStep,
+      completedSteps: Array.from(completed),
+    };
+  }
+
+  return progress;
 }

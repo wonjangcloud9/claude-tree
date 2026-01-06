@@ -13,6 +13,19 @@ export interface TokenUsage {
   totalCostUsd: number;
 }
 
+export type ProgressStep =
+  | 'analyzing'    // Reading issue/code
+  | 'implementing' // Writing code
+  | 'testing'      // Running tests
+  | 'committing'   // Creating commit
+  | 'creating_pr'; // Creating PR
+
+export interface SessionProgress {
+  currentStep: ProgressStep;
+  completedSteps: ProgressStep[];
+  startedAt: Date;
+}
+
 export interface Session {
   id: string;
   worktreeId: string;
@@ -30,6 +43,8 @@ export interface Session {
   worktreePath: string | null;
   // Token usage
   usage: TokenUsage | null;
+  // Progress tracking
+  progress: SessionProgress | null;
 }
 
 export interface CreateSessionInput {

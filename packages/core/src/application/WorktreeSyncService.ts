@@ -78,6 +78,8 @@ export class WorktreeSyncService {
       worktreePath: worktree.path,
       // Token usage
       usage: null,
+      // Progress tracking
+      progress: null,
     };
   }
 }
