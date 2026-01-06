@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ConnectionStatus } from './ConnectionStatus';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import type { ConnectionState } from '@/hooks/useWebSocket';
+import { locales, type Locale } from '@/i18n/config';
 
 interface HeaderProps {
   connectionState: ConnectionState;
@@ -23,6 +25,8 @@ export function Header({
 }: HeaderProps) {
   const [isLogoHovered, setIsLogoHovered] = useState(false);
   const isConnected = connectionState === 'connected';
+  const pathname = usePathname();
+  const currentLocale = (locales.find((l) => pathname.startsWith(`/${l}`)) || 'en') as Locale;
 
   return (
     <header
@@ -40,7 +44,6 @@ export function Header({
         boxShadow: isConnected ? '0 4px 20px rgba(74, 222, 128, 0.1)' : 'none',
         transition: 'all var(--duration-slow) var(--ease-out)',
         position: 'relative',
-        overflow: 'hidden',
       }}
     >
       {/* Subtle glow when connected */}
@@ -111,8 +114,8 @@ export function Header({
 
         {/* Navigation */}
         <nav style={{ display: 'flex', gap: 'var(--space-2)' }}>
-          <NavLink href="/" label="Dashboard" />
-          <NavLink href="/docs" label="Docs" />
+          <NavLink href={`/${currentLocale}`} label="Dashboard" />
+          <NavLink href={`/${currentLocale}/docs`} label="Docs" />
         </nav>
       </div>
 
