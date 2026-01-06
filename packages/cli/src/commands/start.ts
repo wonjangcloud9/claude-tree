@@ -369,17 +369,12 @@ Rules:
       });
 
       // Start Claude session
-      console.log('\n\x1b[33m[Debug]\x1b[0m Starting Claude process...');
-      console.log(`\x1b[33m[Debug]\x1b[0m Prompt: ${prompt.slice(0, 100)}...`);
-
       const result = await claudeAdapter.start({
         workingDir: worktree.path,
         prompt,
         systemPrompt,
         allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
       });
-
-      console.log(`\x1b[33m[Debug]\x1b[0m Process started with ID: ${result.processId.slice(0, 8)}`);
 
       // Update session with process info
       session.processId = result.processId;
@@ -408,7 +403,6 @@ Rules:
       console.log(`\nSession started: ${session.id.slice(0, 8)}`);
       console.log(`Working directory: ${worktree.path}`);
       console.log('Claude is now working on the issue...\n');
-      console.log('\x1b[33m[Debug]\x1b[0m Waiting for Claude output...\n');
 
       // Wait for Claude to complete and show output
       let outputCount = 0;
@@ -418,7 +412,6 @@ Rules:
       for await (const output of claudeAdapter.getOutput(result.processId)) {
         outputCount++;
         session.lastHeartbeat = new Date();
-        console.log(`\x1b[33m[Debug]\x1b[0m Received output #${outputCount}: type=${output.type}`);
 
         // Track cumulative cost from system events
         if (output.cumulativeCost !== undefined) {
@@ -461,8 +454,6 @@ Rules:
           await sessionRepo.save(session);
         }
       }
-
-      console.log(`\x1b[33m[Debug]\x1b[0m Total outputs received: ${outputCount}`);
 
       // Skip to end if budget was exceeded
       if (budgetExceeded) {
