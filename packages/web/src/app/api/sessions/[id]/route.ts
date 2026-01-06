@@ -60,12 +60,34 @@ export async function DELETE(_request: Request, { params }: Params) {
       );
     }
 
-    // Remove git worktree if it exists
+    // Remove git worktree and branch if they exist
     if (session?.worktreeId) {
+      // Get branch name before removing worktree
+      let branchName: string | null = null;
+      try {
+        const { stdout } = await execAsync(
+          `git worktree list --porcelain | grep -A2 "${session.worktreeId}" | grep "^branch" | cut -d/ -f3-`,
+          { cwd }
+        );
+        branchName = stdout.trim();
+      } catch {
+        // Worktree might not exist
+      }
+
+      // Remove worktree
       try {
         await execAsync(`git worktree remove "${session.worktreeId}" --force`, { cwd });
       } catch {
         // Worktree might not exist or already removed
+      }
+
+      // Delete branch after worktree is removed
+      if (branchName && branchName !== 'main' && branchName !== 'develop' && branchName !== 'master') {
+        try {
+          await execAsync(`git branch -D "${branchName}"`, { cwd });
+        } catch {
+          // Branch might not exist or already deleted
+        }
       }
 
       // Add to deleted list (so it won't be re-synced if worktree still exists)
