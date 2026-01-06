@@ -1,3 +1,10 @@
+<p align="center">
+  <a href="README.md">English</a> |
+  <a href="README.ko.md">한국어</a> |
+  <a href="README.ja.md">日本語</a> |
+  <a href="README.zh.md">中文</a>
+</p>
+
 # @claudetree/cli
 
 **Run multiple Claude Code sessions in parallel** — each in its own isolated git worktree.

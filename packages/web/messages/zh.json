@@ -1,0 +1,85 @@
+{
+  "common": {
+    "dashboard": "仪表板",
+    "docs": "文档",
+    "sessions": "会话",
+    "github": "GitHub",
+    "live": "实时",
+    "loading": "加载中...",
+    "noData": "无数据",
+    "refresh": "刷新",
+    "refreshing": "刷新中...",
+    "retry": "重试",
+    "approve": "批准",
+    "reject": "拒绝"
+  },
+  "status": {
+    "running": "运行中",
+    "completed": "已完成",
+    "pending": "待处理",
+    "paused": "已暂停",
+    "failed": "失败",
+    "connected": "已连接",
+    "connecting": "连接中",
+    "disconnected": "已断开"
+  },
+  "stats": {
+    "totalSessions": "总会话数",
+    "running": "运行中",
+    "completed": "已完成",
+    "paused": "已暂停"
+  },
+  "session": {
+    "noSessions": "无活动会话",
+    "startCommand": "运行以下命令来创建会话",
+    "sessions": "会话",
+    "viewDetails": "查看详情"
+  },
+  "docs": {
+    "title": "文档",
+    "subtitle": "学习如何使用claudetree",
+    "gettingStarted": "开始使用",
+    "introduction": "介绍",
+    "installation": "安装",
+    "quickStart": "快速开始",
+    "cliReference": "CLI参考",
+    "commands": "命令",
+    "startOptions": "Start选项",
+    "configuration": "配置",
+    "configFile": "配置文件",
+    "githubIntegration": "GitHub集成",
+    "slackNotifications": "Slack通知",
+    "sessionTemplates": "会话模板",
+    "builtinTemplates": "内置模板",
+    "customTemplates": "自定义模板",
+    "architecture": "架构",
+    "projectStructure": "项目结构",
+    "packages": "包",
+    "dataFlow": "数据流",
+    "apiReference": "API参考",
+    "restEndpoints": "REST端点",
+    "websocketEvents": "WebSocket事件",
+    "typescriptTypes": "TypeScript类型",
+    "advancedTopics": "高级主题",
+    "gitWorktreeStrategy": "Git Worktree策略",
+    "parallelSessions": "并行会话",
+    "errorHandling": "错误处理"
+  },
+  "timeline": {
+    "noEvents": "暂无事件",
+    "eventsWillAppear": "会话进行时事件将显示在这里",
+    "loadingEvents": "加载事件中..."
+  },
+  "approval": {
+    "pending": "待处理",
+    "approved": "已批准",
+    "rejected": "已拒绝",
+    "showParameters": "显示参数",
+    "hideParameters": "隐藏参数"
+  },
+  "terminal": {
+    "copyOutput": "复制输出",
+    "copied": "已复制!",
+    "scrollToBottom": "滚动到底部"
+  }
+}

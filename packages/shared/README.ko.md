@@ -7,17 +7,17 @@
 
 # @claudetree/shared
 
-Shared TypeScript types and utilities for claudetree.
+claudetree의 공유 TypeScript 타입과 유틸리티.
 
-## Installation
+## 설치
 
 ```bash
 npm install @claudetree/shared
-# or
+# 또는
 pnpm add @claudetree/shared
 ```
 
-## Types
+## 타입
 
 ### Session
 ```typescript
@@ -46,15 +46,15 @@ interface TokenUsage {
 }
 ```
 
-### Other Types
-- `Worktree` - Git worktree information
-- `Issue` - GitHub issue data
-- `SessionEvent` - Session activity events
-- `ToolApproval` - Tool approval requests
-- `CodeReview` - Code review requests
-- `SessionTemplate` - Session templates
+### 기타 타입
+- `Worktree` - Git worktree 정보
+- `Issue` - GitHub 이슈 데이터
+- `SessionEvent` - 세션 활동 이벤트
+- `ToolApproval` - 도구 승인 요청
+- `CodeReview` - 코드 리뷰 요청
+- `SessionTemplate` - 세션 템플릿
 
-## Usage
+## 사용법
 
 ```typescript
 import type { Session, SessionStatus, TokenUsage } from '@claudetree/shared';
@@ -66,11 +66,11 @@ const session: Session = {
 };
 ```
 
-## Links
+## 링크
 
-- [GitHub Repository](https://github.com/wonjangcloud9/claude-tree)
-- [CLI Package](https://www.npmjs.com/package/@claudetree/cli)
+- [GitHub 저장소](https://github.com/wonjangcloud9/claude-tree)
+- [CLI 패키지](https://www.npmjs.com/package/@claudetree/cli)
 
-## License
+## 라이선스
 
 MIT

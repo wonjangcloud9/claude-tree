@@ -1,19 +1,10 @@
-import type { Metadata } from 'next';
-import './globals.css';
-
-export const metadata: Metadata = {
-  title: 'claudetree',
-  description: 'Git Worktree-based Claude Code multi-session manager',
-};
+// Root layout - delegates to [locale]/layout.tsx
+// This file is required for Next.js but the actual layout is in [locale]/layout.tsx
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
+  return children;
 }

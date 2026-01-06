@@ -1,0 +1,85 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "docs": "Documentation",
+    "sessions": "Sessions",
+    "github": "GitHub",
+    "live": "Live",
+    "loading": "Loading...",
+    "noData": "No data available",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing...",
+    "retry": "Retry",
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "status": {
+    "running": "Running",
+    "completed": "Completed",
+    "pending": "Pending",
+    "paused": "Paused",
+    "failed": "Failed",
+    "connected": "Connected",
+    "connecting": "Connecting",
+    "disconnected": "Disconnected"
+  },
+  "stats": {
+    "totalSessions": "Total Sessions",
+    "running": "Running",
+    "completed": "Completed",
+    "paused": "Paused"
+  },
+  "session": {
+    "noSessions": "No active sessions",
+    "startCommand": "Run this command to create one",
+    "sessions": "Sessions",
+    "viewDetails": "View Details"
+  },
+  "docs": {
+    "title": "Documentation",
+    "subtitle": "Learn how to use claudetree",
+    "gettingStarted": "Getting Started",
+    "introduction": "Introduction",
+    "installation": "Installation",
+    "quickStart": "Quick Start",
+    "cliReference": "CLI Reference",
+    "commands": "Commands",
+    "startOptions": "Start Options",
+    "configuration": "Configuration",
+    "configFile": "Configuration File",
+    "githubIntegration": "GitHub Integration",
+    "slackNotifications": "Slack Notifications",
+    "sessionTemplates": "Session Templates",
+    "builtinTemplates": "Built-in Templates",
+    "customTemplates": "Custom Templates",
+    "architecture": "Architecture",
+    "projectStructure": "Project Structure",
+    "packages": "Packages",
+    "dataFlow": "Data Flow",
+    "apiReference": "API Reference",
+    "restEndpoints": "REST Endpoints",
+    "websocketEvents": "WebSocket Events",
+    "typescriptTypes": "TypeScript Types",
+    "advancedTopics": "Advanced Topics",
+    "gitWorktreeStrategy": "Git Worktree Strategy",
+    "parallelSessions": "Parallel Sessions",
+    "errorHandling": "Error Handling"
+  },
+  "timeline": {
+    "noEvents": "No events yet",
+    "eventsWillAppear": "Events will appear here as the session progresses",
+    "loadingEvents": "Loading events..."
+  },
+  "approval": {
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "showParameters": "Show parameters",
+    "hideParameters": "Hide parameters"
+  },
+  "terminal": {
+    "copyOutput": "Copy output",
+    "copied": "Copied!",
+    "scrollToBottom": "Scroll to bottom"
+  }
+}

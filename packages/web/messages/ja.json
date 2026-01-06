@@ -1,0 +1,85 @@
+{
+  "common": {
+    "dashboard": "ダッシュボード",
+    "docs": "ドキュメント",
+    "sessions": "セッション",
+    "github": "GitHub",
+    "live": "ライブ",
+    "loading": "読み込み中...",
+    "noData": "データなし",
+    "refresh": "更新",
+    "refreshing": "更新中...",
+    "retry": "再試行",
+    "approve": "承認",
+    "reject": "拒否"
+  },
+  "status": {
+    "running": "実行中",
+    "completed": "完了",
+    "pending": "保留中",
+    "paused": "一時停止",
+    "failed": "失敗",
+    "connected": "接続済み",
+    "connecting": "接続中",
+    "disconnected": "切断"
+  },
+  "stats": {
+    "totalSessions": "総セッション数",
+    "running": "実行中",
+    "completed": "完了",
+    "paused": "一時停止"
+  },
+  "session": {
+    "noSessions": "アクティブなセッションなし",
+    "startCommand": "次のコマンドでセッションを開始",
+    "sessions": "セッション",
+    "viewDetails": "詳細を見る"
+  },
+  "docs": {
+    "title": "ドキュメント",
+    "subtitle": "claudetreeの使い方を学ぶ",
+    "gettingStarted": "はじめに",
+    "introduction": "紹介",
+    "installation": "インストール",
+    "quickStart": "クイックスタート",
+    "cliReference": "CLIリファレンス",
+    "commands": "コマンド",
+    "startOptions": "Startオプション",
+    "configuration": "設定",
+    "configFile": "設定ファイル",
+    "githubIntegration": "GitHub連携",
+    "slackNotifications": "Slack通知",
+    "sessionTemplates": "セッションテンプレート",
+    "builtinTemplates": "組み込みテンプレート",
+    "customTemplates": "カスタムテンプレート",
+    "architecture": "アーキテクチャ",
+    "projectStructure": "プロジェクト構造",
+    "packages": "パッケージ",
+    "dataFlow": "データフロー",
+    "apiReference": "APIリファレンス",
+    "restEndpoints": "RESTエンドポイント",
+    "websocketEvents": "WebSocketイベント",
+    "typescriptTypes": "TypeScript型",
+    "advancedTopics": "高度なトピック",
+    "gitWorktreeStrategy": "Git Worktree戦略",
+    "parallelSessions": "並列セッション",
+    "errorHandling": "エラー処理"
+  },
+  "timeline": {
+    "noEvents": "イベントなし",
+    "eventsWillAppear": "セッションが進行するとここにイベントが表示されます",
+    "loadingEvents": "イベント読み込み中..."
+  },
+  "approval": {
+    "pending": "保留中",
+    "approved": "承認済み",
+    "rejected": "拒否済み",
+    "showParameters": "パラメータを表示",
+    "hideParameters": "パラメータを隠す"
+  },
+  "terminal": {
+    "copyOutput": "出力をコピー",
+    "copied": "コピー済み!",
+    "scrollToBottom": "一番下にスクロール"
+  }
+}

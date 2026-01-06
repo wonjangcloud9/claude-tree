@@ -7,17 +7,17 @@
 
 # @claudetree/shared
 
-Shared TypeScript types and utilities for claudetree.
+claudetree的共享TypeScript类型和工具。
 
-## Installation
+## 安装
 
 ```bash
 npm install @claudetree/shared
-# or
+# 或
 pnpm add @claudetree/shared
 ```
 
-## Types
+## 类型
 
 ### Session
 ```typescript
@@ -46,15 +46,15 @@ interface TokenUsage {
 }
 ```
 
-### Other Types
-- `Worktree` - Git worktree information
-- `Issue` - GitHub issue data
-- `SessionEvent` - Session activity events
-- `ToolApproval` - Tool approval requests
-- `CodeReview` - Code review requests
-- `SessionTemplate` - Session templates
+### 其他类型
+- `Worktree` - Git worktree信息
+- `Issue` - GitHub问题数据
+- `SessionEvent` - 会话活动事件
+- `ToolApproval` - 工具审批请求
+- `CodeReview` - 代码审查请求
+- `SessionTemplate` - 会话模板
 
-## Usage
+## 使用方法
 
 ```typescript
 import type { Session, SessionStatus, TokenUsage } from '@claudetree/shared';
@@ -66,11 +66,11 @@ const session: Session = {
 };
 ```
 
-## Links
+## 链接
 
-- [GitHub Repository](https://github.com/wonjangcloud9/claude-tree)
-- [CLI Package](https://www.npmjs.com/package/@claudetree/cli)
+- [GitHub仓库](https://github.com/wonjangcloud9/claude-tree)
+- [CLI包](https://www.npmjs.com/package/@claudetree/cli)
 
-## License
+## 许可证
 
 MIT

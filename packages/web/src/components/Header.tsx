@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ConnectionStatus } from './ConnectionStatus';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import type { ConnectionState } from '@/hooks/useWebSocket';
 
 interface HeaderProps {
@@ -149,6 +150,8 @@ export function Header({
           lastError={lastError}
           onReconnect={onReconnect}
         />
+
+        <LanguageSwitcher />
       </div>
     </header>
   );
