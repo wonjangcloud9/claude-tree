@@ -1,4 +1,4 @@
-import type { Session } from '@claudetree/shared';
+import type { Session, TokenUsage } from '@claudetree/shared';
 
 export interface ISessionRepository {
   findById(id: string): Promise<Session | null>;
@@ -13,6 +13,7 @@ export interface IClaudeSessionAdapter {
   resume(sessionId: string, prompt: string): Promise<ClaudeSessionResult>;
   stop(processId: string): Promise<void>;
   getOutput(processId: string): AsyncIterable<ClaudeOutput>;
+  isProcessAlive(osProcessId: number): boolean;
 }
 
 export interface ClaudeSessionConfig {
@@ -26,10 +27,12 @@ export interface ClaudeSessionConfig {
 export interface ClaudeSessionResult {
   processId: string;
   claudeSessionId: string | null;
+  osProcessId: number | null;
 }
 
 export interface ClaudeOutput {
   type: 'text' | 'tool_use' | 'tool_result' | 'error' | 'done';
   content: string;
   timestamp: Date;
+  usage?: TokenUsage;
 }

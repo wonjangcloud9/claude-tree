@@ -51,6 +51,10 @@ export const statusCommand = new Command('status')
 
       console.log('Sessions:\n');
 
+      let totalCost = 0;
+      let totalInputTokens = 0;
+      let totalOutputTokens = 0;
+
       for (const session of sessions) {
         const color = STATUS_COLORS[session.status] ?? '';
         const statusStr = `${color}${session.status}${RESET}`;
@@ -65,7 +69,24 @@ export const statusCommand = new Command('status')
           console.log(`    Prompt: ${truncatedPrompt}`);
         }
         console.log(`    Created: ${session.createdAt.toLocaleString()}`);
+
+        // Display token usage
+        if (session.usage) {
+          const { inputTokens, outputTokens, totalCostUsd } = session.usage;
+          console.log(`    \x1b[33mTokens:\x1b[0m ${inputTokens.toLocaleString()} in / ${outputTokens.toLocaleString()} out`);
+          console.log(`    \x1b[33mCost:\x1b[0m $${totalCostUsd.toFixed(4)}`);
+          totalCost += totalCostUsd;
+          totalInputTokens += inputTokens;
+          totalOutputTokens += outputTokens;
+        }
+
         console.log('');
+      }
+
+      // Show totals if any session has usage data
+      if (totalCost > 0) {
+        console.log('\x1b[2m─────────────────────────────────────\x1b[0m');
+        console.log(`\x1b[1mTotal:\x1b[0m ${totalInputTokens.toLocaleString()} in / ${totalOutputTokens.toLocaleString()} out | \x1b[32m$${totalCost.toFixed(4)}\x1b[0m\n`);
       }
     };
 

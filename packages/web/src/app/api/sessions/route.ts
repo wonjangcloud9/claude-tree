@@ -114,6 +114,11 @@ export async function GET() {
           prompt: `Working on ${worktree.branch}`,
           createdAt: new Date(),
           updatedAt: new Date(),
+          processId: null,
+          osProcessId: null,
+          lastHeartbeat: null,
+          errorCount: 0,
+          worktreePath: worktree.path,
         };
         sessions.push(newSession);
         hasChanges = true;

@@ -4,3 +4,4 @@ export * from './issue.js';
 export * from './event.js';
 export * from './tool-approval.js';
 export * from './code-review.js';
+export * from './template.js';

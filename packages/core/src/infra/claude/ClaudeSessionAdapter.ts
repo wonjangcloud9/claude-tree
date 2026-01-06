@@ -52,6 +52,7 @@ export class ClaudeSessionAdapter
     return {
       processId,
       claudeSessionId: null,
+      osProcessId: proc.pid ?? null,
     };
   }
 
@@ -70,7 +71,17 @@ export class ClaudeSessionAdapter
     return {
       processId,
       claudeSessionId: sessionId,
+      osProcessId: proc.pid ?? null,
     };
+  }
+
+  isProcessAlive(osProcessId: number): boolean {
+    try {
+      process.kill(osProcessId, 0);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async stop(processId: string): Promise<void> {
@@ -172,6 +183,13 @@ export class ClaudeSessionAdapter
           type: 'done',
           content: data.session_id || '',
           timestamp,
+          usage: data.usage ? {
+            inputTokens: data.usage.input_tokens ?? 0,
+            outputTokens: data.usage.output_tokens ?? 0,
+            cacheReadInputTokens: data.usage.cache_read_input_tokens ?? 0,
+            cacheCreationInputTokens: data.usage.cache_creation_input_tokens ?? 0,
+            totalCostUsd: data.total_cost_usd ?? 0,
+          } : undefined,
         };
       }
 

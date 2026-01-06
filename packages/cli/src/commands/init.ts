@@ -1,19 +1,23 @@
 import { Command } from 'commander';
 import { mkdir, writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
+import { DEFAULT_TEMPLATES } from '@claudetree/core';
 
 const CONFIG_DIR = '.claudetree';
 const CONFIG_FILE = 'config.json';
+const TEMPLATES_DIR = 'templates';
 
 interface InitOptions {
   worktreeDir: string;
   force: boolean;
+  slack?: string;
 }
 
 export const initCommand = new Command('init')
   .description('Initialize claudetree in current repository')
   .option('-d, --worktree-dir <dir>', 'Base directory for worktrees', '.worktrees')
   .option('-f, --force', 'Overwrite existing configuration', false)
+  .option('--slack <webhook-url>', 'Slack webhook URL for notifications')
   .action(async (options: InitOptions) => {
     const cwd = process.cwd();
     const configDir = join(cwd, CONFIG_DIR);
@@ -34,11 +38,21 @@ export const initCommand = new Command('init')
     await mkdir(configDir, { recursive: true });
 
     // Create default config
-    const config = {
+    const config: {
+      version: string;
+      worktreeDir: string;
+      sessions: Record<string, unknown>;
+      slack?: { webhookUrl: string };
+    } = {
       version: '0.1.0',
       worktreeDir: options.worktreeDir,
       sessions: {},
     };
+
+    // Add Slack webhook if provided
+    if (options.slack) {
+      config.slack = { webhookUrl: options.slack };
+    }
 
     await writeFile(configPath, JSON.stringify(config, null, 2));
 
@@ -61,7 +75,20 @@ export const initCommand = new Command('init')
       // Ignore gitignore errors
     }
 
+    // Create default templates
+    const templatesDir = join(configDir, TEMPLATES_DIR);
+    await mkdir(templatesDir, { recursive: true });
+
+    for (const [name, template] of Object.entries(DEFAULT_TEMPLATES)) {
+      const templatePath = join(templatesDir, `${name}.json`);
+      await writeFile(templatePath, JSON.stringify(template, null, 2));
+    }
+
     console.log(`Initialized claudetree in ${cwd}`);
     console.log(`  Config: ${configPath}`);
     console.log(`  Worktrees: ${worktreeDir}`);
+    console.log(`  Templates: ${templatesDir} (${Object.keys(DEFAULT_TEMPLATES).length} templates)`);
+    if (options.slack) {
+      console.log(`  Slack: notifications enabled`);
+    }
   });

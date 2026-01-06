@@ -9,9 +9,12 @@ import {
   FileEventRepository,
   FileToolApprovalRepository,
   GitHubAdapter,
+  TemplateLoader,
+  DEFAULT_TEMPLATES,
+  SlackNotifier,
   type ClaudeOutputEvent,
 } from '@claudetree/core';
-import type { Session, Issue, EventType } from '@claudetree/shared';
+import type { Session, Issue, EventType, SessionTemplate } from '@claudetree/shared';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -21,6 +24,7 @@ interface StartOptions {
   skill?: string;
   branch?: string;
   token?: string;
+  template?: string;
 }
 
 interface Config {
@@ -29,6 +33,9 @@ interface Config {
     token?: string;
     owner?: string;
     repo?: string;
+  };
+  slack?: {
+    webhookUrl?: string;
   };
 }
 
@@ -49,6 +56,7 @@ export const startCommand = new Command('start')
   .option('-p, --prompt <prompt>', 'Initial prompt for Claude')
   .option('--no-session', 'Create worktree without starting Claude')
   .option('-s, --skill <skill>', 'Skill to activate (tdd, review)')
+  .option('-T, --template <template>', 'Session template (bugfix, feature, refactor, review)')
   .option('-b, --branch <branch>', 'Custom branch name')
   .option('-t, --token <token>', 'GitHub token (or use GITHUB_TOKEN env)')
   .action(async (issue: string, options: StartOptions) => {
@@ -191,9 +199,37 @@ export const startCommand = new Command('start')
         prompt: options.prompt ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
+        // Recovery fields
+        processId: null,
+        osProcessId: null,
+        lastHeartbeat: null,
+        errorCount: 0,
+        worktreePath: worktree.path,
+        // Token usage
+        usage: null,
       };
 
       await sessionRepo.save(session);
+
+      // Load template if specified
+      let template: SessionTemplate | null = null;
+      if (options.template) {
+        const templateLoader = new TemplateLoader(join(cwd, CONFIG_DIR));
+        template = await templateLoader.load(options.template);
+
+        // Fall back to default templates
+        if (!template && options.template in DEFAULT_TEMPLATES) {
+          template = DEFAULT_TEMPLATES[options.template] ?? null;
+        }
+
+        if (!template) {
+          console.error(`Error: Template "${options.template}" not found.`);
+          console.log('Available templates: bugfix, feature, refactor, review');
+          process.exit(1);
+        }
+
+        console.log(`  Template: ${template.name}`);
+      }
 
       // Build prompt
       let prompt: string;
@@ -221,17 +257,31 @@ Start implementing now.`;
         prompt = `Working on ${branchName}. Implement any required changes.`;
       }
 
-      // Add skill if specified
+      // Apply template to prompt
+      if (template) {
+        const prefix = template.promptPrefix ? `${template.promptPrefix}\n\n` : '';
+        const suffix = template.promptSuffix ? `\n\n${template.promptSuffix}` : '';
+        prompt = `${prefix}${prompt}${suffix}`;
+      }
+
+      // Add skill if specified (template skill takes precedence)
       let systemPrompt: string | undefined;
-      if (options.skill === 'tdd') {
+      const effectiveSkill = template?.skill || options.skill;
+
+      if (effectiveSkill === 'tdd') {
         systemPrompt = 'Follow TDD workflow: write failing test first, then implement, then refactor.';
-      } else if (options.skill === 'review') {
+      } else if (effectiveSkill === 'review') {
         systemPrompt = 'Review code thoroughly for security, quality, and best practices.';
       }
 
+      // Template system prompt overrides
+      if (template?.systemPrompt) {
+        systemPrompt = template.systemPrompt;
+      }
+
       console.log('\nStarting Claude session...');
-      if (systemPrompt) {
-        console.log(`  Skill: ${options.skill}`);
+      if (effectiveSkill) {
+        console.log(`  Skill: ${effectiveSkill}`);
       }
 
       // Initialize event repositories
@@ -296,10 +346,29 @@ Start implementing now.`;
 
       console.log(`\x1b[33m[Debug]\x1b[0m Process started with ID: ${result.processId.slice(0, 8)}`);
 
-      // Update session
+      // Update session with process info
+      session.processId = result.processId;
+      session.osProcessId = result.osProcessId;
+      session.lastHeartbeat = new Date();
       session.status = 'running';
       session.updatedAt = new Date();
       await sessionRepo.save(session);
+
+      // Setup graceful shutdown
+      const handleShutdown = async () => {
+        console.log('\n[Info] Pausing session...');
+        session.status = 'paused';
+        session.updatedAt = new Date();
+        await sessionRepo.save(session);
+        console.log(`Session paused: ${session.id.slice(0, 8)}`);
+        if (session.claudeSessionId) {
+          console.log(`Resume with: claudetree resume ${session.id.slice(0, 8)}`);
+        }
+        process.exit(0);
+      };
+
+      process.on('SIGINT', handleShutdown);
+      process.on('SIGTERM', handleShutdown);
 
       console.log(`\nSession started: ${session.id.slice(0, 8)}`);
       console.log(`Working directory: ${worktree.path}`);
@@ -310,6 +379,7 @@ Start implementing now.`;
       let outputCount = 0;
       for await (const output of claudeAdapter.getOutput(result.processId)) {
         outputCount++;
+        session.lastHeartbeat = new Date();
         console.log(`\x1b[33m[Debug]\x1b[0m Received output #${outputCount}: type=${output.type}`);
 
         if (output.type === 'text') {
@@ -320,6 +390,21 @@ Start implementing now.`;
           console.error(`\x1b[31m[Error]\x1b[0m ${output.content}`);
         } else if (output.type === 'done') {
           console.log(`\x1b[32m[Done]\x1b[0m Session ID: ${output.content}`);
+          // Capture Claude session ID for resume
+          if (output.content) {
+            session.claudeSessionId = output.content;
+          }
+          // Capture token usage
+          if (output.usage) {
+            session.usage = output.usage;
+            console.log(`\x1b[32m[Usage]\x1b[0m Tokens: ${output.usage.inputTokens} in / ${output.usage.outputTokens} out | Cost: $${output.usage.totalCostUsd.toFixed(4)}`);
+          }
+        }
+
+        // Update heartbeat periodically
+        if (outputCount % 10 === 0) {
+          session.updatedAt = new Date();
+          await sessionRepo.save(session);
         }
       }
 
@@ -332,7 +417,32 @@ Start implementing now.`;
 
       console.log('\nSession completed.');
 
+      // Send Slack notification
+      if (config.slack?.webhookUrl) {
+        const slack = new SlackNotifier(config.slack.webhookUrl);
+        await slack.notifySession({
+          sessionId: session.id,
+          status: 'completed',
+          issueNumber,
+          branch: branchName,
+          worktreePath: worktree.path,
+          duration: Date.now() - session.createdAt.getTime(),
+        });
+      }
+
     } catch (error) {
+      // Send failure notification
+      if (config.slack?.webhookUrl) {
+        const slack = new SlackNotifier(config.slack.webhookUrl);
+        await slack.notifySession({
+          sessionId: 'unknown',
+          status: 'failed',
+          issueNumber,
+          branch: branchName,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+
       if (error instanceof Error) {
         console.error(`Error: ${error.message}`);
       }
