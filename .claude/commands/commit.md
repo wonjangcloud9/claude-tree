@@ -72,9 +72,9 @@ Provide a simple `git commit -m '...'` command that can be copy-pasted directly.
 **IMPORTANT: Always use single quotes for commit messages.**
 
 **Special character handling:**
-- Use `'` (single quote) to wrap the entire commit message
-- Replace `'` (single quote inside message) → `` ` `` (backtick)
-- Avoid `!`, `$`, `` ` `` at the start of words
+- Use single quote to wrap the entire commit message
+- Replace single quote inside message with backtick
+- Avoid exclamation mark, dollar sign, backtick at the start of words
 
 ## Example Output
 
