@@ -35,7 +35,8 @@ claudetree delegates entire sessions to Claude Code, which means:
 - **High token consumption**: Each session runs autonomously, making multiple API calls
 - **Cost awareness**: A single issue resolution can consume thousands of tokens
 - **Recommended for**: Teams with Claude Pro/Team plans or sufficient API credits
-- **Monitor usage**: Use `ct status` or the web dashboard to track active sessions
+- **Monitor usage**: Use `ct status` to track token usage and costs per session
+- **Budget control**: Use `--max-cost` to automatically stop sessions that exceed a cost limit
 
 Consider using `--no-session` flag to create worktrees without starting Claude if you want manual control.
 
@@ -108,9 +109,15 @@ ct start https://github.com/you/my-web-app/issues/42
 ### Step 4: Monitor progress
 
 ```bash
-ct status    # CLI status view
+ct status    # CLI status view with progress bar & cost
+ct status -w # Watch mode (auto-refresh)
 ct web       # Web dashboard at http://localhost:3000
 ```
+
+**Status output includes:**
+- Session progress: `●─●─◉─○─○ Implementing`
+- Token usage: `12,345 in / 3,456 out`
+- Cost tracking: `$0.1234`
 
 ## CLI Commands
 
@@ -119,9 +126,11 @@ ct web       # Web dashboard at http://localhost:3000
 | `ct init` | Initialize claudetree in your project |
 | `ct start <issue>` | Create worktree and start Claude session |
 | `ct list` | List all worktrees |
-| `ct status` | Show all session statuses |
+| `ct status` | Show all session statuses with progress & cost |
 | `ct stop [id]` | Stop a session |
 | `ct web` | Start web dashboard |
+| `ct doctor` | Check environment setup (Claude CLI, Git, GitHub) |
+| `ct demo` | Interactive demo to explore features |
 
 ### Start Options
 
@@ -129,11 +138,15 @@ ct web       # Web dashboard at http://localhost:3000
 ct start <issue> [options]
 
 Options:
-  -p, --prompt <prompt>   Custom prompt for Claude
-  -s, --skill <skill>     Activate skill (tdd, review)
-  -b, --branch <branch>   Custom branch name
-  -t, --token <token>     GitHub token
-  --no-session            Create worktree only (no Claude)
+  -p, --prompt <prompt>      Custom prompt for Claude
+  -s, --skill <skill>        Activate skill (tdd, review)
+  -T, --template <template>  Session template (bugfix, feature, refactor, review)
+  -b, --branch <branch>      Custom branch name
+  -t, --token <token>        GitHub token
+  --max-cost <cost>          Budget limit in USD (auto-stops if exceeded)
+  --lint <command>           Run lint after session (e.g., "npm run lint")
+  --gate                     Fail session if lint fails
+  --no-session               Create worktree only (no Claude)
 ```
 
 ### Examples
@@ -145,11 +158,20 @@ ct start https://github.com/you/repo/issues/42
 # Just create worktree, run Claude manually later
 ct start 42 --no-session
 
-# With TDD workflow
+# With TDD workflow (test first, then implement)
 ct start 42 --skill tdd
 
-# Custom prompt
-ct start 42 -p "Focus on performance optimization"
+# With budget limit ($0.50 max)
+ct start 42 --max-cost 0.50
+
+# With lint gate (fail if lint fails)
+ct start 42 --lint "npm run lint" --gate
+
+# Using a template
+ct start 42 --template bugfix
+
+# Full options
+ct start 42 -s tdd --max-cost 1.00 --lint "npm run lint" --gate
 ```
 
 ## Configuration
@@ -204,13 +226,27 @@ ct web    # http://localhost:3000
 ```bash
 ct start 42 --skill tdd
 ```
-Forces Test-Driven Development: write test first → implement → refactor
+Enforces strict Test-Driven Development:
+1. **RED** — Write failing test first (commit: `test: ...`)
+2. **GREEN** — Minimal implementation to pass (commit: `feat: ...`)
+3. **REFACTOR** — Clean up code (commit: `refactor: ...`)
 
 ### Code Review
 ```bash
 ct start 42 --skill review
 ```
 Thorough code review with CRITICAL / WARNING / INFO levels
+
+## Session Templates
+
+Templates provide pre-configured prompts for common tasks:
+
+```bash
+ct start 42 --template bugfix     # Focus on bug fixing
+ct start 42 --template feature    # Feature implementation
+ct start 42 --template refactor   # Code refactoring
+ct start 42 --template review     # Code review
+```
 
 ## Architecture
 
@@ -255,8 +291,8 @@ PRs are automatically created targeting the `develop` branch.
 
 ## Limitations
 
-- **Token costs**: Autonomous sessions consume significant tokens
-- **Claude availability**: Requires Claude Code CLI installed
+- **Token costs**: Autonomous sessions consume significant tokens (use `--max-cost` to limit)
+- **Claude availability**: Requires Claude Code CLI installed (run `ct doctor` to check)
 - **Git worktrees**: Project must be a git repository
 - **GitHub integration**: Currently GitHub-only for issue fetching
 
