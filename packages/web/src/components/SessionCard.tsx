@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import type { Session, SessionStatus } from '@claudetree/shared';
+import { locales, type Locale } from '@/i18n/config';
 
 interface SessionCardProps {
   session: Session;
@@ -52,13 +54,15 @@ const STATUS_CONFIG: Record<SessionStatus, {
 
 export function SessionCard({ session, index = 0 }: SessionCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const pathname = usePathname();
+  const currentLocale = (locales.find((l) => pathname.startsWith(`/${l}`)) || 'en') as Locale;
   const config = STATUS_CONFIG[session.status];
   const shortId = session.id.slice(0, 8);
   const isActive = session.status === 'running' || session.status === 'pending';
 
   return (
     <Link
-      href={`/sessions/${session.id}`}
+      href={`/${currentLocale}/sessions/${session.id}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
@@ -195,13 +199,10 @@ export function SessionCard({ session, index = 0 }: SessionCardProps) {
         {/* Progress bar for running sessions */}
         {session.status === 'running' && (
           <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
+            marginTop: 'var(--space-4)',
             height: '3px',
             background: 'var(--bg-tertiary)',
-            borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
+            borderRadius: 'var(--radius-full)',
             overflow: 'hidden',
           }}>
             <div style={{

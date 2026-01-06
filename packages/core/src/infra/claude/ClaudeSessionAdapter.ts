@@ -25,27 +25,10 @@ export class ClaudeSessionAdapter
     const args = this.buildArgs(config);
     const processId = randomUUID();
 
-    console.log(`[ClaudeAdapter] Spawning: claude ${args.join(' ').slice(0, 100)}...`);
-    console.log(`[ClaudeAdapter] Working dir: ${config.workingDir}`);
-
     const proc = spawn('claude', args, {
       cwd: config.workingDir,
       stdio: ['ignore', 'pipe', 'pipe'],  // stdin을 ignore로 변경
     });
-
-    proc.on('error', (err) => {
-      console.error(`[ClaudeAdapter] Process error: ${err.message}`);
-    });
-
-    proc.on('exit', (code, signal) => {
-      console.log(`[ClaudeAdapter] Process exited: code=${code}, signal=${signal}`);
-    });
-
-    if (proc.stderr) {
-      proc.stderr.on('data', (data) => {
-        console.error(`[ClaudeAdapter] stderr: ${data.toString()}`);
-      });
-    }
 
     this.processes.set(processId, proc);
 
@@ -94,29 +77,17 @@ export class ClaudeSessionAdapter
 
   async *getOutput(processId: string): AsyncIterable<ClaudeOutput> {
     const proc = this.processes.get(processId);
-    console.log(`[ClaudeAdapter] getOutput called for process: ${processId.slice(0, 8)}`);
 
-    if (!proc) {
-      console.error(`[ClaudeAdapter] No process found for ID: ${processId.slice(0, 8)}`);
+    if (!proc || !proc.stdout) {
       return;
     }
-
-    if (!proc.stdout) {
-      console.error(`[ClaudeAdapter] No stdout for process: ${processId.slice(0, 8)}`);
-      return;
-    }
-
-    console.log(`[ClaudeAdapter] Setting up readline for stdout...`);
 
     const rl = createInterface({
       input: proc.stdout,
       crlfDelay: Infinity,
     });
 
-    console.log(`[ClaudeAdapter] Starting to read lines...`);
-
     for await (const line of rl) {
-      console.log(`[ClaudeAdapter] Raw line received (${line.length} chars)`);
       if (!line.trim()) continue;
 
       const output = this.parseStreamOutput(line);
@@ -129,14 +100,9 @@ export class ClaudeSessionAdapter
       yield output;
     }
 
-    console.log(`[ClaudeAdapter] Readline ended, waiting for process to close...`);
-
     // Wait for process to exit
     await new Promise<void>((resolve) => {
-      proc.on('close', () => {
-        console.log(`[ClaudeAdapter] Process closed`);
-        resolve();
-      });
+      proc.on('close', () => resolve());
     });
   }
 
