@@ -32,6 +32,7 @@ describe('FileSessionRepository', () => {
     lastHeartbeat: null,
     errorCount: 0,
     worktreePath: null,
+    usage: null,
     ...overrides,
   });
 

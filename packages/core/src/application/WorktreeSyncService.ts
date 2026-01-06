@@ -76,6 +76,8 @@ export class WorktreeSyncService {
       lastHeartbeat: null,
       errorCount: 0,
       worktreePath: worktree.path,
+      // Token usage
+      usage: null,
     };
   }
 }

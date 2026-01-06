@@ -1,4 +1,4 @@
-import type { Session } from '@claudetree/shared';
+import type { Session, TokenUsage } from '@claudetree/shared';
 
 export interface ISessionRepository {
   findById(id: string): Promise<Session | null>;
@@ -34,4 +34,5 @@ export interface ClaudeOutput {
   type: 'text' | 'tool_use' | 'tool_result' | 'error' | 'done';
   content: string;
   timestamp: Date;
+  usage?: TokenUsage;
 }

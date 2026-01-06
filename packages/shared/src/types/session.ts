@@ -5,6 +5,14 @@ export type SessionStatus =
   | 'completed'
   | 'failed';
 
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  totalCostUsd: number;
+}
+
 export interface Session {
   id: string;
   worktreeId: string;
@@ -20,6 +28,8 @@ export interface Session {
   lastHeartbeat: Date | null;
   errorCount: number;
   worktreePath: string | null;
+  // Token usage
+  usage: TokenUsage | null;
 }
 
 export interface CreateSessionInput {

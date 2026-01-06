@@ -205,6 +205,8 @@ export const startCommand = new Command('start')
         lastHeartbeat: null,
         errorCount: 0,
         worktreePath: worktree.path,
+        // Token usage
+        usage: null,
       };
 
       await sessionRepo.save(session);
@@ -391,6 +393,11 @@ Start implementing now.`;
           // Capture Claude session ID for resume
           if (output.content) {
             session.claudeSessionId = output.content;
+          }
+          // Capture token usage
+          if (output.usage) {
+            session.usage = output.usage;
+            console.log(`\x1b[32m[Usage]\x1b[0m Tokens: ${output.usage.inputTokens} in / ${output.usage.outputTokens} out | Cost: $${output.usage.totalCostUsd.toFixed(4)}`);
           }
         }
 
