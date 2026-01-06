@@ -119,6 +119,7 @@ export async function GET() {
           lastHeartbeat: null,
           errorCount: 0,
           worktreePath: worktree.path,
+          usage: null,
         };
         sessions.push(newSession);
         hasChanges = true;
