@@ -55,9 +55,12 @@ Write a clear description of what changed.
 git add -A
 git commit -m "<type>: <description>"
 git push -u origin <branch-name>
+
+# Create PR (IMPORTANT: unset GITHUB_TOKEN to use gh CLI's keyring token)
+unset GITHUB_TOKEN && gh pr create --base develop --title "<type>: <description>" --body "..."
 ```
 
-Create PR to `develop` branch on GitHub.
+**CRITICAL**: If `GITHUB_TOKEN` env var is set (e.g., by claudetree), it may lack PR creation permissions. Always use `unset GITHUB_TOKEN && gh pr create ...` to ensure gh CLI uses the keyring token with proper scopes.
 
 ### 4. Release to main
 
