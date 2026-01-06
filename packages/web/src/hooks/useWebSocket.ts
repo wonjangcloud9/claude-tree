@@ -36,6 +36,13 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryCountRef = useRef(0);
+  // Store callback in ref to avoid dependency issues
+  const onMessageRef = useRef(onMessage);
+
+  // Update ref when callback changes (without triggering reconnect)
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
   const calculateDelay = useCallback(
     (attempt: number): number => {
@@ -47,6 +54,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (wsRef.current?.readyState === WebSocket.CONNECTING) return;
 
     setConnectionState('connecting');
 
@@ -64,7 +72,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          onMessage?.(data);
+          onMessageRef.current?.(data);
         } catch (err) {
           console.error('WebSocket message parse error:', err);
         }
@@ -74,6 +82,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         setConnectionState('disconnected');
         wsRef.current = null;
 
+        // Don't retry on clean close or max retries exceeded
         if (event.code === 1000 || retryCountRef.current >= maxRetries) {
           if (retryCountRef.current >= maxRetries) {
             setLastError(`Max retries (${maxRetries}) exceeded`);
@@ -96,7 +105,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       setConnectionState('disconnected');
       setLastError(err instanceof Error ? err.message : 'Connection failed');
     }
-  }, [url, onMessage, maxRetries, calculateDelay]);
+  }, [url, maxRetries, calculateDelay]); // onMessage removed from deps
 
   const reconnect = useCallback(() => {
     if (timeoutRef.current) {
