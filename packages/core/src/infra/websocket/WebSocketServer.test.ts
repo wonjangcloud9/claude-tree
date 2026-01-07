@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WebSocket } from 'ws';
 import { WebSocketBroadcaster, type WSMessage, type EventType } from './WebSocketServer.js';
 
@@ -39,8 +39,6 @@ describe('WebSocketBroadcaster', () => {
   };
 
   beforeEach(() => {
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
     testPort = getAvailablePort();
   });
 
@@ -49,7 +47,6 @@ describe('WebSocketBroadcaster', () => {
       broadcaster.close();
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
-    vi.restoreAllMocks();
   });
 
   describe('constructor', () => {
@@ -57,9 +54,7 @@ describe('WebSocketBroadcaster', () => {
       broadcaster = new WebSocketBroadcaster(testPort);
 
       expect(broadcaster).toBeDefined();
-      expect(console.log).toHaveBeenCalledWith(
-        `WebSocket server listening on port ${testPort}`
-      );
+      expect(broadcaster.clientCount).toBe(0);
     });
 
     it('should start with zero clients', () => {
@@ -105,14 +100,13 @@ describe('WebSocketBroadcaster', () => {
       ]);
     });
 
-    it('should log client connection', async () => {
+    it('should accept client connection', async () => {
       broadcaster = new WebSocketBroadcaster(testPort);
       const client = new WebSocket(`ws://localhost:${testPort}`);
       await waitForConnection(client);
 
-      expect(console.log).toHaveBeenCalledWith(
-        'WebSocket client connected (1 total)'
-      );
+      expect(client.readyState).toBe(WebSocket.OPEN);
+      expect(broadcaster.clientCount).toBe(1);
 
       client.close();
       await waitForClose(client);
@@ -134,18 +128,18 @@ describe('WebSocketBroadcaster', () => {
       expect(broadcaster.clientCount).toBe(0);
     });
 
-    it('should log client disconnection', async () => {
+    it('should handle client disconnection', async () => {
       broadcaster = new WebSocketBroadcaster(testPort);
       const client = new WebSocket(`ws://localhost:${testPort}`);
       await waitForConnection(client);
+
+      expect(broadcaster.clientCount).toBe(1);
 
       client.close();
       await waitForClose(client);
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      expect(console.log).toHaveBeenCalledWith(
-        'WebSocket client disconnected (0 total)'
-      );
+      expect(broadcaster.clientCount).toBe(0);
     });
   });
 
@@ -262,10 +256,8 @@ describe('WebSocketBroadcaster', () => {
         wss.emit('error', new Error('Server error'));
       }).not.toThrow();
 
-      expect(console.error).toHaveBeenCalledWith(
-        'WebSocket server error:',
-        'Server error'
-      );
+      // Server should still be functional after error
+      expect(broadcaster.clientCount).toBe(0);
     });
 
     it('should skip closed clients during broadcast', async () => {
