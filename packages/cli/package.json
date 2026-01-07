@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/cli",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "description": "CLI for claudetree - Manage Claude sessions with git worktrees",
   "type": "module",
   "bin": {

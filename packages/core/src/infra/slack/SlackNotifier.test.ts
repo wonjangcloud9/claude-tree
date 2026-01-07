@@ -119,7 +119,7 @@ describe('SlackNotifier', () => {
       expect(result).toBe(true);
       expect(fetchMock).toHaveBeenCalled();
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const body = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body);
       expect(body.attachments[0].color).toBe('#3498db');
       expect(body.attachments[0].title).toBe('Issue #42');
       expect(body.attachments[0].fields).toContainEqual({
@@ -143,7 +143,7 @@ describe('SlackNotifier', () => {
 
       await notifier.notifySession(notification);
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const body = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body);
       expect(body.attachments[0].color).toBe('#36a64f');
       expect(body.attachments[0].title).toBe('Session abc12345');
       expect(body.attachments[0].fields).toContainEqual({
@@ -167,7 +167,7 @@ describe('SlackNotifier', () => {
 
       await notifier.notifySession(notification);
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const body = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body);
       expect(body.attachments[0].color).toBe('#dc3545');
       expect(body.attachments[0].fields).toContainEqual({
         title: 'Status',
@@ -189,7 +189,7 @@ describe('SlackNotifier', () => {
 
       await notifier.notifySession(notification);
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const body = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body);
       expect(body.attachments[0].color).toBe('#ffc107');
       expect(body.attachments[0].fields).toContainEqual({
         title: 'Status',
@@ -206,7 +206,7 @@ describe('SlackNotifier', () => {
 
       await notifier.notifySession(notification);
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const body = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body);
       expect(body.attachments[0].title).toBe('Session abc12345');
     });
   });
@@ -226,7 +226,7 @@ describe('SlackNotifier', () => {
       const result = await notifier.notifyBatch(results);
 
       expect(result).toBe(true);
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const body = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body);
       expect(body.blocks[0].text.text).toBe(':white_check_mark: Batch Complete');
       expect(body.blocks[1].fields).toContainEqual({
         type: 'mrkdwn',
@@ -249,7 +249,7 @@ describe('SlackNotifier', () => {
       const result = await notifier.notifyBatch(results);
 
       expect(result).toBe(true);
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const body = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body);
       expect(body.blocks[0].text.text).toBe(':warning: Batch Complete');
       expect(body.blocks[1].fields).toContainEqual({
         type: 'mrkdwn',
@@ -270,7 +270,7 @@ describe('SlackNotifier', () => {
 
       await notifier.notifyBatch(results);
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const body = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body);
       expect(body.blocks[2].text.text).toContain('#1: Unknown error');
     });
 
@@ -280,7 +280,7 @@ describe('SlackNotifier', () => {
       const result = await notifier.notifyBatch(results);
 
       expect(result).toBe(true);
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const body = JSON.parse((fetchMock.mock.calls[0]![1] as { body: string }).body);
       expect(body.blocks[1].fields).toContainEqual({
         type: 'mrkdwn',
         text: '*Completed:* 0',

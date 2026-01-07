@@ -35,9 +35,9 @@ describe('FileEventRepository', () => {
       const events = await repo.findBySessionId(event.sessionId);
 
       expect(events).toHaveLength(1);
-      expect(events[0].id).toBe(event.id);
-      expect(events[0].content).toBe(event.content);
-      expect(events[0].timestamp).toEqual(event.timestamp);
+      expect(events[0]!.id).toBe(event.id);
+      expect(events[0]!.content).toBe(event.content);
+      expect(events[0]!.timestamp).toEqual(event.timestamp);
     });
 
     it('should append multiple events to same session', async () => {
@@ -49,8 +49,8 @@ describe('FileEventRepository', () => {
       const events = await repo.findBySessionId('session-1');
 
       expect(events).toHaveLength(2);
-      expect(events[0].id).toBe('e1');
-      expect(events[1].id).toBe('e2');
+      expect(events[0]!.id).toBe('e1');
+      expect(events[1]!.id).toBe('e2');
     });
 
     it('should return empty array for non-existent session', async () => {
@@ -71,7 +71,7 @@ describe('FileEventRepository', () => {
       expect(session1Events).toHaveLength(2);
       expect(session2Events).toHaveLength(1);
       expect(session1Events.map((e) => e.id)).toEqual(['e1', 'e3']);
-      expect(session2Events[0].id).toBe('e2');
+      expect(session2Events[0]!.id).toBe('e2');
     });
   });
 
@@ -84,8 +84,8 @@ describe('FileEventRepository', () => {
       const latest = await repo.getLatest('session-1', 2);
 
       expect(latest).toHaveLength(2);
-      expect(latest[0].id).toBe('e2');
-      expect(latest[1].id).toBe('e3');
+      expect(latest[0]!.id).toBe('e2');
+      expect(latest[1]!.id).toBe('e3');
     });
 
     it('should return all events if limit exceeds count', async () => {
@@ -152,8 +152,8 @@ describe('FileEventRepository', () => {
       const events = await repo.findBySessionId('session-1');
 
       expect(events).toHaveLength(1000);
-      expect(events[0].id).toBe('existing-1');
-      expect(events[999].id).toBe('new-event');
+      expect(events[0]!.id).toBe('existing-1');
+      expect(events[999]!.id).toBe('new-event');
     });
   });
 
@@ -201,8 +201,8 @@ describe('FileEventRepository', () => {
 
       // Verify deserialized event has Date object
       const events = await repo.findBySessionId('session-1');
-      expect(events[0].timestamp).toBeInstanceOf(Date);
-      expect(events[0].timestamp.toISOString()).toBe('2024-06-15T12:30:45.123Z');
+      expect(events[0]!.timestamp).toBeInstanceOf(Date);
+      expect(events[0]!.timestamp.toISOString()).toBe('2024-06-15T12:30:45.123Z');
     });
 
     it('should preserve metadata in events', async () => {
@@ -213,7 +213,7 @@ describe('FileEventRepository', () => {
       await repo.append(event);
       const events = await repo.findBySessionId('session-1');
 
-      expect(events[0].metadata).toEqual({ key: 'value', nested: { foo: 'bar' } });
+      expect(events[0]!.metadata).toEqual({ key: 'value', nested: { foo: 'bar' } });
     });
   });
 });
