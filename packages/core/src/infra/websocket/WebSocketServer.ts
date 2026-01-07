@@ -1,4 +1,7 @@
 import { WebSocketServer as WSServer, WebSocket } from 'ws';
+import { createLogger } from '../logger/index.js';
+
+const logger = createLogger('websocket');
 
 export type EventType =
   | 'session:started'
@@ -28,24 +31,24 @@ export class WebSocketBroadcaster {
 
     this.wss.on('connection', (ws) => {
       this.clients.add(ws);
-      console.log(`WebSocket client connected (${this.clients.size} total)`);
+      logger.info('client connected (%d total)', this.clients.size);
 
       ws.on('close', () => {
         this.clients.delete(ws);
-        console.log(`WebSocket client disconnected (${this.clients.size} total)`);
+        logger.info('client disconnected (%d total)', this.clients.size);
       });
 
       ws.on('error', (err) => {
-        console.error('WebSocket error:', err.message);
+        logger.error('client error: %s', err.message);
         this.clients.delete(ws);
       });
     });
 
     this.wss.on('error', (err) => {
-      console.error('WebSocket server error:', err.message);
+      logger.error('server error: %s', err.message);
     });
 
-    console.log(`WebSocket server listening on port ${port}`);
+    logger.info('server listening on port %d', port);
   }
 
   broadcast(message: WSMessage): void {
