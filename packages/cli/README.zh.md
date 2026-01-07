@@ -23,7 +23,7 @@ pnpm add -g @claudetree/cli
 # 在项目中初始化
 ct init
 
-# 开始处理GitHub问题
+# 开始处理GitHub问题（默认TDD模式）
 ct start https://github.com/you/repo/issues/42
 
 # 监控进度
@@ -32,6 +32,28 @@ ct status
 # 打开Web仪表板
 ct web
 ```
+
+## TDD模式（默认）
+
+所有会话默认以TDD模式运行：
+
+```bash
+# TDD模式（2小时超时，默认）
+ct start 42
+
+# 自定义超时和验证门
+ct start 42 --timeout 60 --gates test,type,lint
+
+# 禁用TDD模式
+ct start 42 --no-tdd
+```
+
+**TDD选项：**
+- `--timeout <分钟>` - 会话超时（默认：120）
+- `--idle-timeout <分钟>` - 空闲超时（默认：10）
+- `--gates <gates>` - 验证门：test,type,lint,build（默认：test,type）
+- `--max-retries <n>` - 门重试次数（默认：3）
+- `--no-tdd` - 禁用TDD模式
 
 ## 命令
 

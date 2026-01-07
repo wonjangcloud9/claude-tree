@@ -23,7 +23,7 @@ pnpm add -g @claudetree/cli
 # Initialize in your project
 ct init
 
-# Start working on a GitHub issue
+# Start working on a GitHub issue (TDD mode by default)
 ct start https://github.com/you/repo/issues/42
 
 # Monitor progress
@@ -32,6 +32,28 @@ ct status
 # Open web dashboard
 ct web
 ```
+
+## TDD Mode (Default)
+
+All sessions run in TDD mode by default:
+
+```bash
+# TDD mode with 2h timeout (default)
+ct start 42
+
+# Custom timeout and gates
+ct start 42 --timeout 60 --gates test,type,lint
+
+# Disable TDD mode
+ct start 42 --no-tdd
+```
+
+**TDD Options:**
+- `--timeout <min>` - Session timeout (default: 120)
+- `--idle-timeout <min>` - Idle timeout (default: 10)
+- `--gates <gates>` - Validation gates: test,type,lint,build (default: test,type)
+- `--max-retries <n>` - Gate retry count (default: 3)
+- `--no-tdd` - Disable TDD mode
 
 ## Commands
 

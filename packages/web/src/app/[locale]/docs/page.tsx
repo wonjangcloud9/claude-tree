@@ -198,7 +198,7 @@ ct init --slack https://hooks.slack.com/services/XXX/YYY/ZZZ`}
         />
 
         <h2 id="ct-start" style={sectionTitle}>ct start</h2>
-        <p style={paragraph}>Create a worktree and start a Claude session.</p>
+        <p style={paragraph}>Create a worktree and start a Claude session. <strong>TDD mode is enabled by default.</strong></p>
         <CodeBlock
           code={`ct start <issue> [options]
 
@@ -208,10 +208,34 @@ Arguments:
 Options:
   -p, --prompt <prompt>      Initial prompt for Claude
   --no-session               Create worktree without starting Claude
-  -s, --skill <skill>        Skill to activate (tdd, review)
+  --no-tdd                   Disable TDD mode (just implement without test-first)
+  -s, --skill <skill>        Skill to activate (review)
   -T, --template <template>  Session template (bugfix, feature, refactor, review)
   -b, --branch <branch>      Custom branch name
-  -t, --token <token>        GitHub token (or use GITHUB_TOKEN env)`}
+  -t, --token <token>        GitHub token (or use GITHUB_TOKEN env)
+  --max-cost <cost>          Maximum cost in USD (stops session if exceeded)
+  --timeout <minutes>        Total session timeout (default: 120)
+  --idle-timeout <minutes>   Idle timeout (default: 10)
+  --max-retries <n>          Max retries per validation gate (default: 3)
+  --gates <gates>            Validation gates: test,type,lint,build (default: test,type)
+  --test-command <cmd>       Custom test command (default: pnpm test)`}
+          language="bash"
+        />
+
+        <h4 style={subSectionTitle}>TDD Mode (Default)</h4>
+        <p style={paragraph}>
+          Sessions run in TDD mode by default. Claude will write tests first, then implement.
+          After completion, validation gates are automatically executed.
+        </p>
+        <CodeBlock
+          code={`# TDD mode with 2h timeout (default)
+ct start 42
+
+# Custom timeout and gates
+ct start 42 --timeout 60 --gates test,type,lint
+
+# Disable TDD mode
+ct start 42 --no-tdd`}
           language="bash"
         />
 
@@ -223,9 +247,6 @@ ct start 42
 # Start with template
 ct start 42 --template bugfix
 
-# Start with TDD skill
-ct start 42 --skill tdd
-
 # Start with custom prompt
 ct start 42 --prompt "Focus on unit tests only"
 
@@ -233,7 +254,10 @@ ct start 42 --prompt "Focus on unit tests only"
 ct start 42 --no-session
 
 # Custom branch name
-ct start 42 --branch fix/login-validation`}
+ct start 42 --branch fix/login-validation
+
+# Budget limit
+ct start 42 --max-cost 5.00`}
           language="bash"
         />
 

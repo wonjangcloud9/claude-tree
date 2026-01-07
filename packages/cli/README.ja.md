@@ -23,7 +23,7 @@ pnpm add -g @claudetree/cli
 # プロジェクトで初期化
 ct init
 
-# GitHub課題の作業開始
+# GitHub課題の作業開始（TDDモードがデフォルト）
 ct start https://github.com/you/repo/issues/42
 
 # 進捗監視
@@ -32,6 +32,28 @@ ct status
 # Webダッシュボードを開く
 ct web
 ```
+
+## TDDモード（デフォルト）
+
+すべてのセッションはデフォルトでTDDモードで実行されます：
+
+```bash
+# TDDモード（2時間タイムアウト、デフォルト）
+ct start 42
+
+# カスタムタイムアウトとゲート
+ct start 42 --timeout 60 --gates test,type,lint
+
+# TDDモードを無効化
+ct start 42 --no-tdd
+```
+
+**TDDオプション：**
+- `--timeout <分>` - セッションタイムアウト（デフォルト：120）
+- `--idle-timeout <分>` - アイドルタイムアウト（デフォルト：10）
+- `--gates <gates>` - 検証ゲート：test,type,lint,build（デフォルト：test,type）
+- `--max-retries <n>` - ゲートリトライ回数（デフォルト：3）
+- `--no-tdd` - TDDモード無効化
 
 ## コマンド
 

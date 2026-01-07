@@ -23,7 +23,7 @@ pnpm add -g @claudetree/cli
 # 프로젝트에서 초기화
 ct init
 
-# GitHub 이슈 작업 시작
+# GitHub 이슈 작업 시작 (TDD 모드 기본)
 ct start https://github.com/you/repo/issues/42
 
 # 진행상황 모니터링
@@ -32,6 +32,28 @@ ct status
 # 웹 대시보드 열기
 ct web
 ```
+
+## TDD 모드 (기본)
+
+모든 세션은 기본적으로 TDD 모드로 실행됩니다:
+
+```bash
+# TDD 모드 (2시간 타임아웃, 기본값)
+ct start 42
+
+# 커스텀 타임아웃 및 게이트
+ct start 42 --timeout 60 --gates test,type,lint
+
+# TDD 모드 끄기
+ct start 42 --no-tdd
+```
+
+**TDD 옵션:**
+- `--timeout <분>` - 세션 타임아웃 (기본: 120)
+- `--idle-timeout <분>` - 유휴 타임아웃 (기본: 10)
+- `--gates <gates>` - 검증 게이트: test,type,lint,build (기본: test,type)
+- `--max-retries <n>` - 게이트 재시도 횟수 (기본: 3)
+- `--no-tdd` - TDD 모드 비활성화
 
 ## 명령어
 
