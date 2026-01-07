@@ -13,6 +13,7 @@ import { Timeline } from '@/components/timeline/Timeline';
 import { TerminalOutput } from '@/components/terminal/TerminalOutput';
 import { ApprovalList } from '@/components/approval/ApprovalList';
 import { CodeReviewPanel } from '@/components/review/CodeReviewPanel';
+import { Skeleton, SkeletonText } from '@/components/Skeleton';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
 export default function SessionDetailPage() {
@@ -115,7 +116,127 @@ export default function SessionDetailPage() {
   };
 
   if (loading) {
-    return <div style={{ padding: '24px' }}>Loading...</div>;
+    return (
+      <main style={{ minHeight: '100vh', padding: '24px' }}>
+        {/* Header Skeleton */}
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <Skeleton width="120px" height="14px" style={{ marginBottom: '8px' }} />
+              <Skeleton width="200px" height="28px" style={{ marginBottom: '8px' }} />
+              <Skeleton width="100px" height="14px" />
+            </div>
+            <Skeleton width="120px" height="36px" borderRadius="6px" />
+          </div>
+        </div>
+
+        {/* Grid Skeleton */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '24px',
+          }}
+        >
+          {/* Terminal Output Skeleton */}
+          <section>
+            <Skeleton width="120px" height="16px" style={{ marginBottom: '12px' }} />
+            <div
+              style={{
+                background: 'var(--terminal-bg)',
+                borderRadius: '8px',
+                padding: '16px',
+                height: '300px',
+              }}
+            >
+              <SkeletonText lines={8} />
+            </div>
+          </section>
+
+          {/* Timeline Skeleton */}
+          <section>
+            <Skeleton width="80px" height="16px" style={{ marginBottom: '12px' }} />
+            <div
+              style={{
+                background: 'var(--bg-secondary)',
+                borderRadius: '8px',
+                padding: '16px',
+                maxHeight: '400px',
+              }}
+            >
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    gap: '12px',
+                    marginBottom: '16px',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <Skeleton width="8px" height="8px" borderRadius="50%" style={{ marginTop: '4px' }} />
+                  <div style={{ flex: 1 }}>
+                    <Skeleton width="60%" height="14px" style={{ marginBottom: '4px' }} />
+                    <Skeleton width="80px" height="12px" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Tool Approvals Skeleton */}
+          <section>
+            <Skeleton width="120px" height="16px" style={{ marginBottom: '12px' }} />
+            <div
+              style={{
+                background: 'var(--bg-secondary)',
+                borderRadius: '8px',
+                padding: '16px',
+              }}
+            >
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: '12px',
+                    border: '1px solid var(--border)',
+                    borderRadius: '6px',
+                    marginBottom: i < 1 ? '12px' : 0,
+                  }}
+                >
+                  <Skeleton width="40%" height="14px" style={{ marginBottom: '8px' }} />
+                  <Skeleton width="80%" height="12px" style={{ marginBottom: '12px' }} />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Skeleton width="80px" height="32px" borderRadius="6px" />
+                    <Skeleton width="80px" height="32px" borderRadius="6px" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Code Review Skeleton */}
+          <section>
+            <Skeleton width="100px" height="16px" style={{ marginBottom: '12px' }} />
+            <div
+              style={{
+                background: 'var(--bg-secondary)',
+                borderRadius: '8px',
+                padding: '16px',
+              }}
+            >
+              <Skeleton width="50%" height="18px" style={{ marginBottom: '16px' }} />
+              <SkeletonText lines={4} />
+              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                <Skeleton width="100px" height="32px" borderRadius="6px" />
+                <Skeleton width="100px" height="32px" borderRadius="6px" />
+                <Skeleton width="140px" height="32px" borderRadius="6px" />
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
   }
 
   if (error || !session) {
