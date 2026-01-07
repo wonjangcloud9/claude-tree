@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server';
-import { readFile, writeFile, rm, mkdir } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import type { Session } from '@claudetree/shared';
+import {
+  getCwd,
+  getSessionsPath,
+  loadSessions,
+  saveSessions,
+  addToDeletedList,
+  CONFIG_DIR,
+} from '@/lib/session-utils';
 
 const execAsync = promisify(exec);
-
-const CONFIG_DIR = '.claudetree';
-const SESSIONS_FILE = 'sessions.json';
-const DELETED_FILE = 'deleted.json';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -18,11 +22,10 @@ interface Params {
 export async function GET(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
-    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
-    const sessionsPath = join(cwd, CONFIG_DIR, SESSIONS_FILE);
+    const cwd = getCwd();
+    const sessionsPath = getSessionsPath(cwd);
 
-    const content = await readFile(sessionsPath, 'utf-8');
-    const sessions = JSON.parse(content) as Session[];
+    const sessions = await loadSessions(sessionsPath);
     const session = sessions.find((s) => s.id === id);
 
     if (!session) {
@@ -38,12 +41,10 @@ export async function GET(_request: Request, { params }: Params) {
 export async function DELETE(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
-    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
-    const sessionsPath = join(cwd, CONFIG_DIR, SESSIONS_FILE);
-    const deletedPath = join(cwd, CONFIG_DIR, DELETED_FILE);
+    const cwd = getCwd();
+    const sessionsPath = getSessionsPath(cwd);
 
-    const content = await readFile(sessionsPath, 'utf-8');
-    const sessions = JSON.parse(content) as Session[];
+    const sessions = await loadSessions(sessionsPath);
     const sessionIndex = sessions.findIndex((s) => s.id === id);
 
     if (sessionIndex === -1) {
@@ -91,24 +92,12 @@ export async function DELETE(_request: Request, { params }: Params) {
       }
 
       // Add to deleted list (so it won't be re-synced if worktree still exists)
-      let deleted: string[] = [];
-      try {
-        const deletedContent = await readFile(deletedPath, 'utf-8');
-        deleted = JSON.parse(deletedContent);
-      } catch {
-        // File doesn't exist yet
-      }
-
-      if (!deleted.includes(session.worktreeId)) {
-        deleted.push(session.worktreeId);
-        await mkdir(join(cwd, CONFIG_DIR), { recursive: true });
-        await writeFile(deletedPath, JSON.stringify(deleted, null, 2));
-      }
+      await addToDeletedList(cwd, session.worktreeId);
     }
 
     // Remove session from list
     sessions.splice(sessionIndex, 1);
-    await writeFile(sessionsPath, JSON.stringify(sessions, null, 2));
+    await saveSessions(sessionsPath, sessions);
 
     // Clean up related files (events, approvals, reviews)
     const filesToDelete = [

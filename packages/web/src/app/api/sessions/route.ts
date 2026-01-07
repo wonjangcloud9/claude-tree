@@ -1,88 +1,20 @@
 import { NextResponse } from 'next/server';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, basename } from 'node:path';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import type { Session } from '@claudetree/shared';
-
-const execAsync = promisify(exec);
-
-const CONFIG_DIR = '.claudetree';
-const SESSIONS_FILE = 'sessions.json';
-const DELETED_FILE = 'deleted.json';
-
-interface WorktreeInfo {
-  path: string;
-  branch: string;
-  isMain: boolean;
-}
-
-async function getWorktrees(cwd: string): Promise<WorktreeInfo[]> {
-  try {
-    const { stdout } = await execAsync('git worktree list --porcelain', { cwd });
-    const worktrees: WorktreeInfo[] = [];
-    const blocks = stdout.trim().split('\n\n');
-
-    for (const block of blocks) {
-      const lines = block.split('\n');
-      let path = '';
-      let branch = '';
-
-      for (const line of lines) {
-        if (line.startsWith('worktree ')) {
-          path = line.slice('worktree '.length);
-        } else if (line.startsWith('branch ')) {
-          branch = line.slice('branch refs/heads/'.length);
-        }
-      }
-
-      if (path) {
-        // Check if it's the main worktree (same as cwd)
-        const isMain = path === cwd || basename(path) === basename(cwd);
-        worktrees.push({ path, branch, isMain });
-      }
-    }
-
-    return worktrees;
-  } catch {
-    return [];
-  }
-}
-
-async function loadSessions(sessionsPath: string): Promise<Session[]> {
-  try {
-    const content = await readFile(sessionsPath, 'utf-8');
-    return JSON.parse(content);
-  } catch {
-    return [];
-  }
-}
-
-async function loadDeletedWorktrees(cwd: string): Promise<Set<string>> {
-  try {
-    const deletedPath = join(cwd, CONFIG_DIR, DELETED_FILE);
-    const content = await readFile(deletedPath, 'utf-8');
-    return new Set(JSON.parse(content));
-  } catch {
-    return new Set();
-  }
-}
-
-async function saveSessions(sessionsPath: string, sessions: Session[]): Promise<void> {
-  await mkdir(join(sessionsPath, '..'), { recursive: true });
-  await writeFile(sessionsPath, JSON.stringify(sessions, null, 2));
-}
-
-function extractIssueNumber(branch: string): number | null {
-  const match = branch.match(/^issue-(\d+)/);
-  return match ? parseInt(match[1] ?? '0', 10) : null;
-}
+import {
+  getCwd,
+  getSessionsPath,
+  getWorktrees,
+  loadSessions,
+  loadDeletedWorktrees,
+  saveSessions,
+  extractIssueNumber,
+} from '@/lib/session-utils';
 
 export async function GET() {
   try {
-    const cwd = process.env.CLAUDETREE_ROOT || process.cwd();
-    const sessionsPath = join(cwd, CONFIG_DIR, SESSIONS_FILE);
+    const cwd = getCwd();
+    const sessionsPath = getSessionsPath(cwd);
 
     // Load existing sessions and deleted worktrees
     let sessions = await loadSessions(sessionsPath);
