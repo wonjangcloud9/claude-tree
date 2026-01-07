@@ -21,6 +21,17 @@ export function formatTime(date: Date, locale: Locale): string {
   });
 }
 
+export function formatTimeWithSeconds(date: Date, locale: Locale): string {
+  const timezone = getTimezoneForLocale(locale);
+  return date.toLocaleTimeString(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: timezone,
+  });
+}
+
 export function formatDateTime(date: Date, locale: Locale): string {
   const timezone = getTimezoneForLocale(locale);
   return date.toLocaleString(locale, {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTime, formatDateTime, getTimezoneForLocale } from './datetime';
+import { formatTime, formatTimeWithSeconds, formatDateTime, getTimezoneForLocale } from './datetime';
 
 describe('getTimezoneForLocale', () => {
   it('returns America/New_York for en locale', () => {
@@ -40,6 +40,30 @@ describe('formatTime', () => {
   it('formats time in US Eastern timezone', () => {
     const result = formatTime(testDate, 'en');
     expect(result).toBe('07:30');
+  });
+});
+
+describe('formatTimeWithSeconds', () => {
+  const testDate = new Date('2024-01-15T12:30:45Z');
+
+  it('formats time with seconds in Korean timezone', () => {
+    const result = formatTimeWithSeconds(testDate, 'ko');
+    expect(result).toBe('21:30:45');
+  });
+
+  it('formats time with seconds in Japanese timezone', () => {
+    const result = formatTimeWithSeconds(testDate, 'ja');
+    expect(result).toBe('21:30:45');
+  });
+
+  it('formats time with seconds in Chinese timezone', () => {
+    const result = formatTimeWithSeconds(testDate, 'zh');
+    expect(result).toBe('20:30:45');
+  });
+
+  it('formats time with seconds in US Eastern timezone', () => {
+    const result = formatTimeWithSeconds(testDate, 'en');
+    expect(result).toBe('07:30:45');
   });
 });
 
