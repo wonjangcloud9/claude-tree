@@ -14,6 +14,7 @@ import { TerminalOutput } from '@/components/terminal/TerminalOutput';
 import { ApprovalList } from '@/components/approval/ApprovalList';
 import { CodeReviewPanel } from '@/components/review/CodeReviewPanel';
 import { Skeleton, SkeletonText } from '@/components/Skeleton';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
 export default function SessionDetailPage() {
@@ -58,7 +59,7 @@ export default function SessionDetailPage() {
       ? `ws://${window.location.hostname}:3001`
       : 'ws://localhost:3001';
 
-  useWebSocket({
+  const { connectionState, retryCount, lastError, reconnect } = useWebSocket({
     url: wsUrl,
     onMessage: (message: unknown) => {
       const msg = message as { payload?: { sessionId?: string } };
@@ -265,22 +266,32 @@ export default function SessionDetailPage() {
               Status: <strong>{session.status}</strong>
             </div>
           </div>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            style={{
-              padding: '8px 16px',
-              background: '#ef4444',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: deleting ? 'not-allowed' : 'pointer',
-              opacity: deleting ? 0.5 : 1,
-              fontSize: '14px',
-            }}
-          >
-            {deleting ? 'Deleting...' : 'Delete Session'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div data-testid="connection-status">
+              <ConnectionStatus
+                state={connectionState}
+                retryCount={retryCount}
+                lastError={lastError}
+                onReconnect={reconnect}
+              />
+            </div>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{
+                padding: '8px 16px',
+                background: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: deleting ? 'not-allowed' : 'pointer',
+                opacity: deleting ? 0.5 : 1,
+                fontSize: '14px',
+              }}
+            >
+              {deleting ? 'Deleting...' : 'Delete Session'}
+            </button>
+          </div>
         </div>
       </div>
 
