@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import type { Session, SessionStatus } from '@claudetree/shared';
 import { locales, type Locale } from '@/i18n/config';
+import { formatTime } from '@/lib/datetime';
 
 interface SessionCardProps {
   session: Session;
@@ -182,7 +183,7 @@ export function SessionCard({ session, index = 0 }: SessionCardProps) {
         }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <ClockIcon />
-            {formatDate(session.createdAt)}
+            {formatSessionTime(session.createdAt, currentLocale)}
           </span>
           <span style={{
             display: 'flex',
@@ -246,7 +247,7 @@ function ArrowIcon({ rotated }: { rotated: boolean }) {
   );
 }
 
-function formatDate(date: Date | string): string {
+function formatSessionTime(date: Date | string, locale: Locale): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return formatTime(d, locale);
 }

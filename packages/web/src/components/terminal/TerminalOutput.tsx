@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useLocale } from 'next-intl';
 import type { SessionEvent } from '@claudetree/shared';
+import type { Locale } from '@/i18n/config';
+import { formatTimeWithSeconds } from '@/lib/datetime';
 
 interface TerminalOutputProps {
   events: SessionEvent[];
@@ -10,6 +13,7 @@ interface TerminalOutputProps {
 }
 
 export function TerminalOutput({ events, maxLines = 100, sessionId }: TerminalOutputProps) {
+  const locale = useLocale() as Locale;
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -158,7 +162,7 @@ export function TerminalOutput({ events, maxLines = 100, sessionId }: TerminalOu
         ) : (
           <>
             {outputEvents.map((event, index) => (
-              <TerminalLine key={event.id} event={event} lineNumber={index + 1} />
+              <TerminalLine key={event.id} event={event} lineNumber={index + 1} locale={locale} />
             ))}
             {/* Blinking cursor at the end */}
             <span style={{
@@ -204,7 +208,7 @@ export function TerminalOutput({ events, maxLines = 100, sessionId }: TerminalOu
   );
 }
 
-function TerminalLine({ event, lineNumber }: { event: SessionEvent; lineNumber: number }) {
+function TerminalLine({ event, lineNumber, locale }: { event: SessionEvent; lineNumber: number; locale: Locale }) {
   const getLineStyle = () => {
     if (event.type === 'error') {
       return {
@@ -250,7 +254,7 @@ function TerminalLine({ event, lineNumber }: { event: SessionEvent; lineNumber: 
           marginRight: '12px',
           fontSize: '11px',
         }}>
-          {formatTime(event.timestamp)}
+          {formatTerminalTime(event.timestamp, locale)}
         </span>
 
         {/* Prefix for tool calls */}
@@ -295,7 +299,7 @@ function DownArrowIcon() {
   );
 }
 
-function formatTime(date: Date | string): string {
+function formatTerminalTime(date: Date | string, locale: Locale): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return formatTimeWithSeconds(d, locale);
 }

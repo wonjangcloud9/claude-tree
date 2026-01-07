@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useLocale } from 'next-intl';
 import type { ApprovalStatus, ToolApproval } from '@claudetree/shared';
+import type { Locale } from '@/i18n/config';
+import { formatTime } from '@/lib/datetime';
 
 interface ApprovalCardProps {
   approval: ToolApproval;
@@ -46,6 +49,7 @@ const TOOL_ICONS: Record<string, () => React.ReactElement> = {
 };
 
 export function ApprovalCard({ approval, onApprove, onReject }: ApprovalCardProps) {
+  const locale = useLocale() as Locale;
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const config = STATUS_CONFIG[approval.status];
@@ -111,7 +115,7 @@ export function ApprovalCard({ approval, onApprove, onReject }: ApprovalCardProp
               color: 'var(--text-muted)',
               margin: 0,
             }}>
-              {formatTime(approval.requestedAt)}
+              {formatApprovalTime(approval.requestedAt, locale)}
             </p>
           </div>
         </div>
@@ -335,7 +339,7 @@ function XIcon() {
   );
 }
 
-function formatTime(date: Date | string): string {
+function formatApprovalTime(date: Date | string, locale: Locale): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return formatTime(d, locale);
 }

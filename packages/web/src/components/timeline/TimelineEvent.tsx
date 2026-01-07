@@ -1,6 +1,9 @@
 'use client';
 
+import { useLocale } from 'next-intl';
 import type { EventType, SessionEvent } from '@claudetree/shared';
+import type { Locale } from '@/i18n/config';
+import { formatTime } from '@/lib/datetime';
 
 interface TimelineEventProps {
   event: SessionEvent;
@@ -51,8 +54,10 @@ const EVENT_CONFIG: Record<EventType, {
 };
 
 export function TimelineEvent({ event, isFirst, isLast }: TimelineEventProps) {
+  const locale = useLocale() as Locale;
   const config = EVENT_CONFIG[event.type];
-  const time = formatTime(event.timestamp);
+  const d = typeof event.timestamp === 'string' ? new Date(event.timestamp) : event.timestamp;
+  const time = formatTime(d, locale);
   const Icon = getIcon(event.type);
 
   return (
@@ -218,7 +223,3 @@ function FlagIcon() {
   );
 }
 
-function formatTime(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
