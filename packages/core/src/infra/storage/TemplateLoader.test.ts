@@ -165,29 +165,33 @@ describe('TemplateLoader', () => {
 
   describe('DEFAULT_TEMPLATES', () => {
     it('should have bugfix template with tdd skill', () => {
-      expect(DEFAULT_TEMPLATES['bugfix']).toBeDefined();
-      expect(DEFAULT_TEMPLATES['bugfix'].name).toBe('Bug Fix');
-      expect(DEFAULT_TEMPLATES['bugfix'].skill).toBe('tdd');
+      const bugfix = DEFAULT_TEMPLATES['bugfix'];
+      expect(bugfix).toBeDefined();
+      expect(bugfix?.name).toBe('Bug Fix');
+      expect(bugfix?.skill).toBe('tdd');
     });
 
     it('should have feature template', () => {
-      expect(DEFAULT_TEMPLATES['feature']).toBeDefined();
-      expect(DEFAULT_TEMPLATES['feature'].name).toBe('Feature');
+      const feature = DEFAULT_TEMPLATES['feature'];
+      expect(feature).toBeDefined();
+      expect(feature?.name).toBe('Feature');
     });
 
     it('should have refactor template', () => {
-      expect(DEFAULT_TEMPLATES['refactor']).toBeDefined();
-      expect(DEFAULT_TEMPLATES['refactor'].name).toBe('Refactor');
+      const refactor = DEFAULT_TEMPLATES['refactor'];
+      expect(refactor).toBeDefined();
+      expect(refactor?.name).toBe('Refactor');
     });
 
     it('should have review template with review skill', () => {
-      expect(DEFAULT_TEMPLATES['review']).toBeDefined();
-      expect(DEFAULT_TEMPLATES['review'].name).toBe('Code Review');
-      expect(DEFAULT_TEMPLATES['review'].skill).toBe('review');
+      const review = DEFAULT_TEMPLATES['review'];
+      expect(review).toBeDefined();
+      expect(review?.name).toBe('Code Review');
+      expect(review?.skill).toBe('review');
     });
 
     it('should have all required fields in templates', () => {
-      for (const [key, template] of Object.entries(DEFAULT_TEMPLATES)) {
+      for (const [, template] of Object.entries(DEFAULT_TEMPLATES)) {
         expect(template.name).toBeDefined();
         expect(template.description).toBeDefined();
         expect(template.promptPrefix).toBeDefined();
