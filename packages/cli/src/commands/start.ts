@@ -45,6 +45,19 @@ interface StartOptions {
   testCommand?: string;
 }
 
+/**
+ * Sanitize natural language input to a valid branch name
+ */
+function sanitizeBranchName(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣\s-]/g, '') // Allow Korean characters
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 50); // Max length
+}
+
 interface Config {
   worktreeDir: string;
   github?: {
@@ -163,6 +176,7 @@ export const startCommand = new Command('start')
     let issueNumber: number | null = null;
     let issueData: Issue | null = null;
     let branchName: string;
+    let taskDescription: string | null = null; // For natural language input
 
     const ghToken = options.token ?? process.env.GITHUB_TOKEN ?? config.github?.token;
 
@@ -214,7 +228,10 @@ export const startCommand = new Command('start')
         issueNumber = parsed;
         branchName = options.branch ?? `issue-${issueNumber}`;
       } else {
-        branchName = options.branch ?? `task-${issue}`;
+        // Natural language input - use as task description
+        taskDescription = issue;
+        branchName = options.branch ?? `task-${sanitizeBranchName(issue)}`;
+        console.log(`\n📝 Task: "${taskDescription}"`);
       }
     }
 
@@ -330,6 +347,12 @@ IMPORTANT: Do NOT just analyze or suggest. Actually IMPLEMENT the solution.
 ${tddEnabled ? '\nStart with TDD - write a failing test first!' : ''}`;
       } else if (issueNumber) {
         prompt = `Working on issue #${issueNumber}. ${tddEnabled ? 'Start with TDD - write a failing test first!' : 'Implement the solution.'}`;
+      } else if (taskDescription) {
+        // Natural language task
+        prompt = `Your task: ${taskDescription}
+
+IMPORTANT: Do NOT just analyze or suggest. Actually IMPLEMENT the solution.
+${tddEnabled ? '\nStart with TDD - write a failing test first!' : ''}`;
       } else {
         prompt = `Working on ${branchName}. ${tddEnabled ? 'Start with TDD - write a failing test first!' : 'Implement any required changes.'}`;
       }
