@@ -16,7 +16,7 @@ importers:
         version: 22.19.3
       '@vitest/coverage-v8':
         specifier: ^3.0.0
-        version: 3.2.4(vitest@3.2.4(@types/node@22.19.3))
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.19.3))
       eslint:
         specifier: ^9.17.0
         version: 9.39.2
@@ -25,7 +25,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.0
-        version: 3.2.4(@types/node@22.19.3)
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.3)
 
   packages/cli:
     dependencies:
@@ -51,6 +51,9 @@ importers:
       '@claudetree/shared':
         specifier: workspace:*
         version: link:../shared
+      debug:
+        specifier: ^4.4.0
+        version: 4.4.3
       execa:
         specifier: ^9.5.0
         version: 9.6.1
@@ -61,6 +64,9 @@ importers:
         specifier: ^8.18.0
         version: 8.18.3
     devDependencies:
+      '@types/debug':
+        specifier: ^4.1.12
+        version: 4.1.12
       '@types/ws':
         specifier: ^8.5.0
         version: 8.18.1
@@ -69,7 +75,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.0.0
-        version: 3.2.4(@types/node@22.19.3)
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.3)
 
   packages/shared:
     devDependencies:
@@ -1058,6 +1064,9 @@ packages:
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
+  '@types/debug@4.1.12':
+    resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
+
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
 
@@ -1066,6 +1075,9 @@ packages:
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
+
+  '@types/ms@2.1.0':
+    resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
@@ -3017,11 +3029,17 @@ snapshots:
       '@types/deep-eql': 4.0.2
       assertion-error: 2.0.1
 
+  '@types/debug@4.1.12':
+    dependencies:
+      '@types/ms': 2.1.0
+
   '@types/deep-eql@4.0.2': {}
 
   '@types/estree@1.0.8': {}
 
   '@types/json-schema@7.0.15': {}
+
+  '@types/ms@2.1.0': {}
 
   '@types/node@12.20.55': {}
 
@@ -3041,7 +3059,7 @@ snapshots:
     dependencies:
       '@types/node': 22.19.3
 
-  '@vitest/coverage-v8@3.2.4(vitest@3.2.4(@types/node@22.19.3))':
+  '@vitest/coverage-v8@3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.19.3))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 1.0.2
@@ -3056,7 +3074,7 @@ snapshots:
       std-env: 3.10.0
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@22.19.3)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -4048,7 +4066,7 @@ snapshots:
       '@types/node': 22.19.3
       fsevents: 2.3.3
 
-  vitest@3.2.4(@types/node@22.19.3):
+  vitest@3.2.4(@types/debug@4.1.12)(@types/node@22.19.3):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.4
@@ -4074,6 +4092,7 @@ snapshots:
       vite-node: 3.2.4(@types/node@22.19.3)
       why-is-node-running: 2.3.0
     optionalDependencies:
+      '@types/debug': 4.1.12
       '@types/node': 22.19.3
     transitivePeerDependencies:
       - jiti
