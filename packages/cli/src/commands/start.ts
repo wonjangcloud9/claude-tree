@@ -1,8 +1,7 @@
 import { Command } from 'commander';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { access, readFile } from 'node:fs/promises';
-import { execSync } from 'node:child_process';
+import { access, readFile, writeFile, mkdir } from 'node:fs/promises';
 import {
   GitWorktreeAdapter,
   ClaudeSessionAdapter,
@@ -13,22 +12,37 @@ import {
   TemplateLoader,
   DEFAULT_TEMPLATES,
   SlackNotifier,
+  ValidationGateRunner,
   type ClaudeOutputEvent,
 } from '@claudetree/core';
-import type { Session, Issue, EventType, SessionTemplate, ProgressStep, SessionProgress } from '@claudetree/shared';
+import type {
+  Session,
+  Issue,
+  EventType,
+  SessionTemplate,
+  ProgressStep,
+  SessionProgress,
+  TDDConfig,
+  TDDSessionState,
+  ValidationGate,
+} from '@claudetree/shared';
 
 const CONFIG_DIR = '.claudetree';
 
 interface StartOptions {
   prompt?: string;
   noSession: boolean;
+  tdd: boolean;  // default true, --no-tdd to disable
   skill?: string;
   branch?: string;
   token?: string;
   template?: string;
   maxCost?: number;
-  lint?: string;
-  gate?: boolean;
+  timeout?: string;
+  idleTimeout?: string;
+  maxRetries?: string;
+  gates?: string;
+  testCommand?: string;
 }
 
 interface Config {
@@ -54,18 +68,56 @@ async function loadConfig(cwd: string): Promise<Config | null> {
   }
 }
 
+function parseGates(gatesStr: string, testCommand?: string): ValidationGate[] {
+  const gateNames = gatesStr.split(',').map(g => g.trim().toLowerCase());
+  const gates: ValidationGate[] = [];
+
+  for (const name of gateNames) {
+    switch (name) {
+      case 'test':
+        gates.push({ name: 'test', command: testCommand ?? 'pnpm test', required: true });
+        break;
+      case 'type':
+        gates.push({ name: 'type', command: 'pnpm tsc --noEmit', required: true });
+        break;
+      case 'lint':
+        gates.push({ name: 'lint', command: 'pnpm lint', required: false });
+        break;
+      case 'build':
+        gates.push({ name: 'build', command: 'pnpm build', required: false });
+        break;
+    }
+  }
+
+  return gates;
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+  return `${seconds}s`;
+}
+
 export const startCommand = new Command('start')
-  .description('Create worktree from issue and start Claude session')
+  .description('Create worktree from issue and start Claude session (TDD mode by default)')
   .argument('<issue>', 'Issue number, GitHub URL, or task name')
   .option('-p, --prompt <prompt>', 'Initial prompt for Claude')
   .option('--no-session', 'Create worktree without starting Claude')
-  .option('-s, --skill <skill>', 'Skill to activate (tdd, review)')
+  .option('--no-tdd', 'Disable TDD mode (just implement without test-first)')
+  .option('-s, --skill <skill>', 'Skill to activate (review)')
   .option('-T, --template <template>', 'Session template (bugfix, feature, refactor, review)')
   .option('-b, --branch <branch>', 'Custom branch name')
   .option('-t, --token <token>', 'GitHub token (or use GITHUB_TOKEN env)')
   .option('--max-cost <cost>', 'Maximum cost in USD (stops session if exceeded)', parseFloat)
-  .option('--lint <command>', 'Lint command to run after Claude completes (e.g., "npm run lint")')
-  .option('--gate', 'Fail session if lint fails', false)
+  .option('--timeout <minutes>', 'Total session timeout in minutes (default: 120)')
+  .option('--idle-timeout <minutes>', 'Idle timeout in minutes (default: 10)')
+  .option('--max-retries <n>', 'Max retries per validation gate (default: 3)')
+  .option('--gates <gates>', 'Validation gates: test,type,lint,build (default: test,type)')
+  .option('--test-command <cmd>', 'Custom test command (default: pnpm test)')
   .action(async (issue: string, options: StartOptions) => {
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
@@ -75,17 +127,48 @@ export const startCommand = new Command('start')
       process.exit(1);
     }
 
+    // Build TDD config if TDD mode enabled
+    const tddEnabled = options.tdd !== false;
+    let tddConfig: TDDConfig | null = null;
+
+    if (tddEnabled) {
+      tddConfig = {
+        timeout: parseInt(options.timeout ?? '120', 10) * 60 * 1000,
+        idleTimeout: parseInt(options.idleTimeout ?? '10', 10) * 60 * 1000,
+        maxIterations: 10,
+        maxRetries: parseInt(options.maxRetries ?? '3', 10),
+        gates: parseGates(options.gates ?? 'test,type', options.testCommand),
+      };
+    }
+
+    // Header
+    if (tddEnabled) {
+      console.log('\n\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');
+      console.log('\x1b[36m║         TDD Mode Session (Default)       ║\x1b[0m');
+      console.log('\x1b[36m╚══════════════════════════════════════════╝\x1b[0m');
+      console.log('\n\x1b[90mUse --no-tdd to disable TDD mode\x1b[0m\n');
+
+      console.log('\x1b[33m⏱️  Time Limits:\x1b[0m');
+      console.log(`   Session: ${formatDuration(tddConfig!.timeout)}`);
+      console.log(`   Idle: ${formatDuration(tddConfig!.idleTimeout)}`);
+      console.log(`   Max retries: ${tddConfig!.maxRetries}`);
+
+      console.log('\n\x1b[33m✅ Validation Gates:\x1b[0m');
+      for (const gate of tddConfig!.gates) {
+        const status = gate.required ? '\x1b[31m(required)\x1b[0m' : '\x1b[90m(optional)\x1b[0m';
+        console.log(`   • ${gate.name}: ${gate.command} ${status}`);
+      }
+    }
+
     let issueNumber: number | null = null;
     let issueData: Issue | null = null;
     let branchName: string;
 
-    // Check if it's a GitHub URL
     const ghToken = options.token ?? process.env.GITHUB_TOKEN ?? config.github?.token;
 
     if (issue.includes('github.com')) {
-      // Parse GitHub URL
       if (!ghToken) {
-        console.error('Error: GitHub token required for URL. Set GITHUB_TOKEN or use --token.');
+        console.error('\nError: GitHub token required for URL. Set GITHUB_TOKEN or use --token.');
         process.exit(1);
       }
 
@@ -97,7 +180,7 @@ export const startCommand = new Command('start')
         process.exit(1);
       }
 
-      console.log(`Fetching issue #${parsed.number} from ${parsed.owner}/${parsed.repo}...`);
+      console.log(`\nFetching issue #${parsed.number} from ${parsed.owner}/${parsed.repo}...`);
 
       try {
         issueData = await ghAdapter.getIssue(parsed.owner, parsed.repo, parsed.number);
@@ -111,22 +194,19 @@ export const startCommand = new Command('start')
         process.exit(1);
       }
     } else {
-      // Parse as issue number or task name
       const parsed = parseInt(issue, 10);
       const isNumber = !isNaN(parsed);
 
       if (isNumber && ghToken && config.github?.owner && config.github?.repo) {
-        // Try to fetch issue from configured repo
         const ghAdapter = new GitHubAdapter(ghToken);
         try {
-          console.log(`Fetching issue #${parsed}...`);
+          console.log(`\nFetching issue #${parsed}...`);
           issueData = await ghAdapter.getIssue(config.github.owner, config.github.repo, parsed);
           issueNumber = issueData.number;
           branchName = options.branch ?? ghAdapter.generateBranchName(issueNumber, issueData.title);
 
           console.log(`  Title: ${issueData.title}`);
         } catch {
-          // Fall back to simple issue number
           issueNumber = parsed;
           branchName = options.branch ?? `issue-${issueNumber}`;
         }
@@ -140,7 +220,6 @@ export const startCommand = new Command('start')
 
     const worktreePath = join(cwd, config.worktreeDir, branchName);
 
-    // Check if worktree already exists
     const gitAdapter = new GitWorktreeAdapter(cwd);
     const existingWorktrees = await gitAdapter.list();
     const existingWorktree = existingWorktrees.find(
@@ -179,13 +258,11 @@ export const startCommand = new Command('start')
     }
 
     try {
-
       if (options.noSession) {
         console.log('\nWorktree created. Use "cd" to navigate and start working.');
         return;
       }
 
-      // Check Claude availability
       const claudeAdapter = new ClaudeSessionAdapter();
       const available = await claudeAdapter.isClaudeAvailable();
 
@@ -195,7 +272,6 @@ export const startCommand = new Command('start')
         return;
       }
 
-      // Create session record
       const sessionRepo = new FileSessionRepository(join(cwd, CONFIG_DIR));
       const session: Session = {
         id: randomUUID(),
@@ -206,15 +282,12 @@ export const startCommand = new Command('start')
         prompt: options.prompt ?? null,
         createdAt: new Date(),
         updatedAt: new Date(),
-        // Recovery fields
         processId: null,
         osProcessId: null,
         lastHeartbeat: null,
         errorCount: 0,
         worktreePath: worktree.path,
-        // Token usage
         usage: null,
-        // Progress tracking
         progress: {
           currentStep: 'analyzing',
           completedSteps: [],
@@ -230,7 +303,6 @@ export const startCommand = new Command('start')
         const templateLoader = new TemplateLoader(join(cwd, CONFIG_DIR));
         template = await templateLoader.load(options.template);
 
-        // Fall back to default templates
         if (!template && options.template in DEFAULT_TEMPLATES) {
           template = DEFAULT_TEMPLATES[options.template] ?? null;
         }
@@ -255,75 +327,126 @@ Issue Description:
 ${issueData.body || 'No description provided.'}
 
 IMPORTANT: Do NOT just analyze or suggest. Actually IMPLEMENT the solution.
-
-Workflow:
-1. Read the relevant code files
-2. Write the code to solve this issue
-3. Run tests to verify your implementation
-4. When done, commit your changes with a clear message
-5. Create a PR to the develop branch
-
-Start implementing now.`;
+${tddEnabled ? '\nStart with TDD - write a failing test first!' : ''}`;
       } else if (issueNumber) {
-        prompt = `Working on issue #${issueNumber}. Implement the solution - do not just analyze.`;
+        prompt = `Working on issue #${issueNumber}. ${tddEnabled ? 'Start with TDD - write a failing test first!' : 'Implement the solution.'}`;
       } else {
-        prompt = `Working on ${branchName}. Implement any required changes.`;
+        prompt = `Working on ${branchName}. ${tddEnabled ? 'Start with TDD - write a failing test first!' : 'Implement any required changes.'}`;
       }
 
-      // Apply template to prompt
       if (template) {
         const prefix = template.promptPrefix ? `${template.promptPrefix}\n\n` : '';
         const suffix = template.promptSuffix ? `\n\n${template.promptSuffix}` : '';
         prompt = `${prefix}${prompt}${suffix}`;
       }
 
-      // Add skill if specified (template skill takes precedence)
+      // Build system prompt
       let systemPrompt: string | undefined;
       const effectiveSkill = template?.skill || options.skill;
 
-      if (effectiveSkill === 'tdd') {
-        systemPrompt = `You MUST follow strict TDD (Test-Driven Development):
+      if (tddEnabled) {
+        // TDD system prompt (default)
+        systemPrompt = `You are in TDD (Test-Driven Development) mode. Follow this STRICT workflow:
 
-1. RED: Write a failing test FIRST - never write implementation before tests
-2. GREEN: Write MINIMUM code to pass the test - no extra features
-3. REFACTOR: Clean up while keeping tests green
+## TDD Cycle (Repeat until done)
 
-Rules:
-- One test at a time
-- Commit after each phase: "test: ...", "feat: ...", "refactor: ..."
-- Run tests after every change
-- Create PR only when all tests pass`;
+### 1. RED Phase - Write Failing Test
+- Write ONE failing test that describes the expected behavior
+- Run the test to confirm it fails
+- Commit: "test: add test for <feature>"
+
+### 2. GREEN Phase - Minimal Implementation
+- Write the MINIMUM code to make the test pass
+- Run tests to confirm they pass
+- Commit: "feat: implement <feature>"
+
+### 3. REFACTOR Phase (Optional)
+- Clean up code while keeping tests green
+- Commit: "refactor: improve <description>"
+
+## Rules
+- NEVER write implementation before tests
+- ONE test at a time
+- Run tests after EVERY change
+- Stop when all requirements are met
+
+## Validation Gates (Must Pass Before PR)
+${tddConfig!.gates.map(g => `- ${g.name}: \`${g.command}\` ${g.required ? '(REQUIRED)' : '(optional)'}`).join('\n')}
+
+## Time Limits
+- Total: ${formatDuration(tddConfig!.timeout)}
+- Idle: ${formatDuration(tddConfig!.idleTimeout)}
+
+When done, create a PR to the develop branch.`;
       } else if (effectiveSkill === 'review') {
         systemPrompt = 'Review code thoroughly for security, quality, and best practices.';
       }
 
-      // Template system prompt overrides
       if (template?.systemPrompt) {
         systemPrompt = template.systemPrompt;
       }
 
-      console.log('\nStarting Claude session...');
-      if (effectiveSkill) {
-        console.log(`  Skill: ${effectiveSkill}`);
+      console.log('\n\x1b[36m🚀 Starting Claude session...\x1b[0m');
+      if (tddEnabled) {
+        console.log('   Mode: \x1b[32mTDD\x1b[0m (Test-Driven Development)');
       }
       if (options.maxCost) {
-        console.log(`  \x1b[33mBudget limit: $${options.maxCost.toFixed(2)}\x1b[0m`);
+        console.log(`   Budget: \x1b[33m$${options.maxCost.toFixed(2)}\x1b[0m`);
       }
 
-      // Initialize event repositories
       const eventRepo = new FileEventRepository(join(cwd, CONFIG_DIR));
       const approvalRepo = new FileToolApprovalRepository(join(cwd, CONFIG_DIR));
 
-      // Setup event listener for recording
+      // Save TDD state if enabled
+      let tddState: TDDSessionState | null = null;
+      let tddStatePath: string | null = null;
+
+      if (tddEnabled) {
+        tddState = {
+          phase: 'writing_test',
+          currentIteration: 1,
+          gateResults: [],
+          failureCount: 0,
+          lastActivity: new Date(),
+          config: tddConfig!,
+        };
+        tddStatePath = join(cwd, CONFIG_DIR, 'tdd-state', `${session.id}.json`);
+        await mkdir(join(cwd, CONFIG_DIR, 'tdd-state'), { recursive: true });
+        await writeFile(tddStatePath, JSON.stringify(tddState, null, 2));
+      }
+
+      // Track timeouts
+      const sessionStartTime = Date.now();
+      let lastOutputTime = Date.now();
+      let sessionTimedOut = false;
+      let idleTimedOut = false;
+      let timeoutChecker: ReturnType<typeof setInterval> | null = null;
+
+      if (tddEnabled && tddConfig) {
+        timeoutChecker = setInterval(() => {
+          const elapsed = Date.now() - sessionStartTime;
+          const idleTime = Date.now() - lastOutputTime;
+
+          if (elapsed >= tddConfig.timeout) {
+            sessionTimedOut = true;
+            console.log(`\n\x1b[31m[Timeout]\x1b[0m Session timeout (${formatDuration(tddConfig.timeout)}) exceeded.`);
+            if (timeoutChecker) clearInterval(timeoutChecker);
+          } else if (idleTime >= tddConfig.idleTimeout) {
+            idleTimedOut = true;
+            console.log(`\n\x1b[31m[Timeout]\x1b[0m Idle timeout (${formatDuration(tddConfig.idleTimeout)}) exceeded.`);
+            if (timeoutChecker) clearInterval(timeoutChecker);
+          }
+        }, 5000);
+      }
+
       claudeAdapter.on('output', async (event: ClaudeOutputEvent) => {
         const { output } = event;
+        lastOutputTime = Date.now();
 
-        // Map Claude output type to event type
         let eventType: EventType = 'output';
         if (output.type === 'tool_use') {
           eventType = 'tool_call';
 
-          // Record tool approval request and update progress
           try {
             const parsed = parseToolCall(output.content);
             if (parsed) {
@@ -332,13 +455,12 @@ Rules:
                 sessionId: session.id,
                 toolName: parsed.toolName,
                 parameters: parsed.parameters,
-                status: 'approved', // Auto-approved for now
+                status: 'approved',
                 approvedBy: 'auto',
                 requestedAt: output.timestamp,
                 resolvedAt: output.timestamp,
               });
 
-              // Update progress based on tool usage
               if (session.progress) {
                 const detectedStep = detectProgressStep(parsed.toolName, parsed.parameters);
                 if (detectedStep) {
@@ -348,13 +470,12 @@ Rules:
               }
             }
           } catch {
-            // Ignore parse errors
+            // Ignore
           }
         } else if (output.type === 'error') {
           eventType = 'error';
         }
 
-        // Record event
         try {
           await eventRepo.append({
             id: randomUUID(),
@@ -364,11 +485,10 @@ Rules:
             timestamp: output.timestamp,
           });
         } catch {
-          // Ignore file write errors
+          // Ignore
         }
       });
 
-      // Start Claude session
       const result = await claudeAdapter.start({
         workingDir: worktree.path,
         prompt,
@@ -376,7 +496,6 @@ Rules:
         allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
       });
 
-      // Update session with process info
       session.processId = result.processId;
       session.osProcessId = result.osProcessId;
       session.lastHeartbeat = new Date();
@@ -384,16 +503,18 @@ Rules:
       session.updatedAt = new Date();
       await sessionRepo.save(session);
 
-      // Setup graceful shutdown
       const handleShutdown = async () => {
         console.log('\n[Info] Pausing session...');
+        if (timeoutChecker) clearInterval(timeoutChecker);
         session.status = 'paused';
         session.updatedAt = new Date();
         await sessionRepo.save(session);
-        console.log(`Session paused: ${session.id.slice(0, 8)}`);
-        if (session.claudeSessionId) {
-          console.log(`Resume with: claudetree resume ${session.id.slice(0, 8)}`);
+        if (tddState && tddStatePath) {
+          tddState.phase = 'failed';
+          await writeFile(tddStatePath, JSON.stringify(tddState, null, 2));
         }
+        console.log(`Session paused: ${session.id.slice(0, 8)}`);
+        console.log(`Resume with: claudetree resume ${session.id.slice(0, 8)}`);
         process.exit(0);
       };
 
@@ -404,7 +525,6 @@ Rules:
       console.log(`Working directory: ${worktree.path}`);
       console.log('Claude is now working on the issue...\n');
 
-      // Wait for Claude to complete and show output
       let outputCount = 0;
       let currentCost = 0;
       let budgetExceeded = false;
@@ -412,15 +532,22 @@ Rules:
       for await (const output of claudeAdapter.getOutput(result.processId)) {
         outputCount++;
         session.lastHeartbeat = new Date();
+        lastOutputTime = Date.now();
 
-        // Track cumulative cost from system events
+        // Check timeouts
+        if (sessionTimedOut || idleTimedOut) {
+          await claudeAdapter.stop(result.processId);
+          session.status = 'failed';
+          if (tddState) tddState.phase = 'failed';
+          break;
+        }
+
         if (output.cumulativeCost !== undefined) {
           currentCost = output.cumulativeCost;
 
-          // Budget check
           if (options.maxCost && currentCost >= options.maxCost && !budgetExceeded) {
             budgetExceeded = true;
-            console.log(`\x1b[31m[Budget]\x1b[0m Cost $${currentCost.toFixed(4)} exceeded limit $${options.maxCost.toFixed(4)}. Stopping session...`);
+            console.log(`\x1b[31m[Budget]\x1b[0m Cost $${currentCost.toFixed(4)} exceeded limit $${options.maxCost.toFixed(4)}. Stopping...`);
             await claudeAdapter.stop(result.processId);
             session.status = 'failed';
             session.updatedAt = new Date();
@@ -437,69 +564,114 @@ Rules:
           console.error(`\x1b[31m[Error]\x1b[0m ${output.content}`);
         } else if (output.type === 'done') {
           console.log(`\x1b[32m[Done]\x1b[0m Session ID: ${output.content}`);
-          // Capture Claude session ID for resume
           if (output.content) {
             session.claudeSessionId = output.content;
           }
-          // Capture token usage
           if (output.usage) {
             session.usage = output.usage;
             console.log(`\x1b[32m[Usage]\x1b[0m Tokens: ${output.usage.inputTokens} in / ${output.usage.outputTokens} out | Cost: $${output.usage.totalCostUsd.toFixed(4)}`);
           }
         }
 
-        // Update heartbeat periodically
         if (outputCount % 10 === 0) {
           session.updatedAt = new Date();
           await sessionRepo.save(session);
         }
       }
 
-      // Skip to end if budget was exceeded
-      if (budgetExceeded) {
-        console.log('\nSession stopped due to budget limit.');
-      } else {
-        // Session completed
-        session.status = 'completed';
-        session.updatedAt = new Date();
-        await sessionRepo.save(session);
+      if (timeoutChecker) clearInterval(timeoutChecker);
 
-        console.log('\nSession completed.');
+      // Run validation gates if TDD mode and session didn't fail
+      if (tddEnabled && tddConfig && session.status !== 'failed' && !budgetExceeded) {
+        console.log('\n\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');
+        console.log('\x1b[36m║         Running Validation Gates         ║\x1b[0m');
+        console.log('\x1b[36m╚══════════════════════════════════════════╝\x1b[0m\n');
 
-        // Run lint gate
-        if (options.lint) {
-          console.log('\n\x1b[36m[Gate]\x1b[0m Running lint check...\n');
-          console.log(`  \x1b[33mLint:\x1b[0m ${options.lint}`);
-          try {
-            execSync(options.lint, { cwd: worktree.path, stdio: 'inherit' });
-            console.log('  \x1b[32m✓ Lint passed\x1b[0m\n');
-          } catch {
-            console.log('  \x1b[31m✗ Lint failed\x1b[0m\n');
-            if (options.gate) {
-              console.log('\x1b[31m[Gate]\x1b[0m Session failed lint check.');
-              session.status = 'failed';
-              session.updatedAt = new Date();
-              await sessionRepo.save(session);
-            }
+        if (tddState) {
+          tddState.phase = 'validating';
+          if (tddStatePath) await writeFile(tddStatePath, JSON.stringify(tddState, null, 2));
+        }
+
+        const gateRunner = new ValidationGateRunner();
+        const gateResults = await gateRunner.runWithAutoRetry(
+          tddConfig.gates,
+          {
+            cwd: worktree.path,
+            maxRetries: tddConfig.maxRetries,
+            onRetry: (attempt, failedGate) => {
+              console.log(`\x1b[33m[Retry]\x1b[0m Gate '${failedGate}' failed, attempt ${attempt + 1}/${tddConfig.maxRetries}`);
+            },
+          }
+        );
+
+        console.log('\n\x1b[33m📊 Gate Results:\x1b[0m');
+        for (const res of gateResults.results) {
+          const icon = res.passed ? '\x1b[32m✓\x1b[0m' : '\x1b[31m✗\x1b[0m';
+          const attempts = res.attempts > 1 ? ` (${res.attempts} attempts)` : '';
+          console.log(`   ${icon} ${res.gateName}${attempts}`);
+        }
+
+        console.log(`\n   Total time: ${formatDuration(gateResults.totalTime)}`);
+
+        if (tddState) {
+          tddState.gateResults = gateResults.results;
+        }
+
+        if (gateResults.allPassed) {
+          console.log('\n\x1b[32m✅ All validation gates passed!\x1b[0m');
+          session.status = 'completed';
+          if (tddState) tddState.phase = 'completed';
+        } else {
+          console.log('\n\x1b[31m❌ Validation gates failed.\x1b[0m');
+          session.status = 'failed';
+          if (tddState) tddState.phase = 'failed';
+
+          const failedGate = gateResults.results.find(r => !r.passed);
+          if (failedGate?.output) {
+            console.log(`\n\x1b[33mFailed gate output (${failedGate.gateName}):\x1b[0m`);
+            console.log(failedGate.output);
           }
         }
+      } else if (!tddEnabled && session.status !== 'failed' && !budgetExceeded) {
+        session.status = 'completed';
       }
 
-      // Send Slack notification
+      // Final summary
+      const totalDuration = Date.now() - sessionStartTime;
+      console.log('\n\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');
+      console.log('\x1b[36m║              Session Summary             ║\x1b[0m');
+      console.log('\x1b[36m╚══════════════════════════════════════════╝\x1b[0m\n');
+
+      console.log(`   Status: ${session.status === 'completed' ? '\x1b[32mcompleted\x1b[0m' : '\x1b[31mfailed\x1b[0m'}`);
+      console.log(`   Mode: ${tddEnabled ? 'TDD' : 'Standard'}`);
+      console.log(`   Duration: ${formatDuration(totalDuration)}`);
+      if (session.usage) {
+        console.log(`   Cost: $${session.usage.totalCostUsd.toFixed(4)}`);
+      }
+
+      session.updatedAt = new Date();
+      await sessionRepo.save(session);
+      if (tddState && tddStatePath) {
+        await writeFile(tddStatePath, JSON.stringify(tddState, null, 2));
+      }
+
       if (config.slack?.webhookUrl) {
         const slack = new SlackNotifier(config.slack.webhookUrl);
         await slack.notifySession({
           sessionId: session.id,
-          status: 'completed',
+          status: session.status === 'completed' ? 'completed' : 'failed',
           issueNumber,
           branch: branchName,
           worktreePath: worktree.path,
-          duration: Date.now() - session.createdAt.getTime(),
+          duration: totalDuration,
         });
       }
 
+      if (session.status === 'failed') {
+        process.exit(1);
+      }
+
     } catch (error) {
-      // Send failure notification
       if (config.slack?.webhookUrl) {
         const slack = new SlackNotifier(config.slack.webhookUrl);
         await slack.notifySession({
@@ -521,7 +693,6 @@ Rules:
 function parseToolCall(
   content: string
 ): { toolName: string; parameters: Record<string, unknown> } | null {
-  // Format: "ToolName: {json}"
   const match = content.match(/^(\w+):\s*(.+)$/);
   if (!match) return null;
 
@@ -538,7 +709,6 @@ function parseToolCall(
 function detectProgressStep(toolName: string, params: Record<string, unknown>): ProgressStep | null {
   const command = String(params.command ?? '');
 
-  // Detect test running
   if (toolName === 'Bash') {
     if (command.includes('test') || command.includes('jest') || command.includes('vitest') || command.includes('pytest')) {
       return 'testing';
@@ -551,12 +721,10 @@ function detectProgressStep(toolName: string, params: Record<string, unknown>): 
     }
   }
 
-  // Detect code writing
   if (toolName === 'Edit' || toolName === 'Write') {
     return 'implementing';
   }
 
-  // Detect code reading/analysis
   if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
     return 'analyzing';
   }
@@ -572,9 +740,7 @@ function updateProgress(
   const currentIdx = stepOrder.indexOf(progress.currentStep);
   const newIdx = stepOrder.indexOf(newStep);
 
-  // Only advance forward, don't go backwards
   if (newIdx > currentIdx) {
-    // Mark all steps between current and new as completed
     const completed = new Set(progress.completedSteps);
     for (let i = 0; i <= currentIdx; i++) {
       completed.add(stepOrder[i]!);
