@@ -26,6 +26,9 @@ ct init
 # GitHub 이슈 작업 시작 (TDD 모드 기본)
 ct start https://github.com/you/repo/issues/42
 
+# 또는 자연어로
+ct start "로그인 버그 수정해줘"
+
 # 진행상황 모니터링
 ct status
 
@@ -69,6 +72,26 @@ ct start 42 --no-tdd
 | `ct bustercall` | 모든 open 이슈를 자동으로 가져와 병렬 세션 실행 |
 | `ct clean` | 모든 worktree 제거 (main 제외) |
 | `ct web` | 웹 대시보드 시작 |
+
+## Bustercall (일괄 처리)
+
+스마트 충돌 감지로 여러 GitHub 이슈를 병렬 처리:
+
+```bash
+# 처리될 이슈 미리보기
+ct bustercall --dry-run
+
+# 기본 설정으로 실행 (3개 병렬)
+ct bustercall
+
+# 순차 실행 강제
+ct bustercall --sequential
+
+# 커스텀 충돌 라벨
+ct bustercall --conflict-labels "deps,config"
+```
+
+**충돌 감지:** 공유 파일(package.json, config)을 수정할 수 있는 이슈는 자동 감지되어 머지 충돌 방지를 위해 순차 실행됩니다.
 
 ## 주요 기능
 

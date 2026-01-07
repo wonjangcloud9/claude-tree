@@ -26,6 +26,9 @@ ct init
 # Start working on a GitHub issue (TDD mode by default)
 ct start https://github.com/you/repo/issues/42
 
+# Or use natural language
+ct start "fix the login validation bug"
+
 # Monitor progress
 ct status
 
@@ -69,6 +72,26 @@ ct start 42 --no-tdd
 | `ct bustercall` | Auto-fetch all open issues and run parallel sessions |
 | `ct clean` | Remove all worktrees (except main) |
 | `ct web` | Start web dashboard |
+
+## Bustercall (Batch Processing)
+
+Process multiple GitHub issues in parallel with smart conflict detection:
+
+```bash
+# Preview which issues will be processed
+ct bustercall --dry-run
+
+# Run with default settings (3 parallel)
+ct bustercall
+
+# Force sequential execution
+ct bustercall --sequential
+
+# Custom conflict labels
+ct bustercall --conflict-labels "deps,config"
+```
+
+**Conflict Detection:** Issues that may modify shared files (package.json, config) are automatically detected and run sequentially to prevent merge conflicts.
 
 ## Key Features
 
