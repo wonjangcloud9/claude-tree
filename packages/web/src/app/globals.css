@@ -152,6 +152,12 @@
   100% { background-position: 200% 0; }
 }
 
+/* Skeleton pulse for loading states */
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* Terminal cursor blink */
 @keyframes cursor-blink {
   0%, 50% { opacity: 1; }
