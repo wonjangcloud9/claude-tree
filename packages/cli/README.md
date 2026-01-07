@@ -44,6 +44,7 @@ ct web
 | `ct doctor` | Check environment health |
 | `ct demo` | Interactive demo (no tokens used) |
 | `ct batch` | Process multiple issues in parallel |
+| `ct bustercall` | Auto-fetch all open issues and run parallel sessions |
 | `ct web` | Start web dashboard |
 
 ## Key Features

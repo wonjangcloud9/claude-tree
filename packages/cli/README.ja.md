@@ -44,6 +44,7 @@ ct web
 | `ct doctor` | 環境ヘルスチェック |
 | `ct demo` | インタラクティブデモ（トークン不使用） |
 | `ct batch` | 複数の課題を並列処理 |
+| `ct bustercall` | すべてのopen課題を自動取得して並列セッション実行 |
 | `ct web` | Webダッシュボード開始 |
 
 ## 主な機能

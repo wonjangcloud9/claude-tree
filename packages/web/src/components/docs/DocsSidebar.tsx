@@ -26,6 +26,7 @@ const navigation: NavItem[] = [
       { title: 'ct init', href: '#ct-init' },
       { title: 'ct start', href: '#ct-start' },
       { title: 'ct batch', href: '#ct-batch' },
+      { title: 'ct bustercall', href: '#ct-bustercall' },
       { title: 'ct resume', href: '#ct-resume' },
       { title: 'ct status', href: '#ct-status' },
       { title: 'ct list', href: '#ct-list' },

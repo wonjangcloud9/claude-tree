@@ -44,6 +44,7 @@ ct web
 | `ct doctor` | 환경 상태 확인 |
 | `ct demo` | 인터랙티브 데모 (토큰 미사용) |
 | `ct batch` | 여러 이슈를 병렬로 처리 |
+| `ct bustercall` | 모든 open 이슈를 자동으로 가져와 병렬 세션 실행 |
 | `ct web` | 웹 대시보드 시작 |
 
 ## 주요 기능

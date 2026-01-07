@@ -44,6 +44,7 @@ ct web
 | `ct doctor` | 检查环境健康状态 |
 | `ct demo` | 交互式演示（不消耗token） |
 | `ct batch` | 并行处理多个问题 |
+| `ct bustercall` | 自动获取所有open问题并运行并行会话 |
 | `ct web` | 启动Web仪表板 |
 
 ## 主要功能

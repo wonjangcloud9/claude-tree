@@ -286,6 +286,59 @@ https://github.com/owner/repo/issues/44
           filename="issues.txt"
         />
 
+        <h2 id="ct-bustercall" style={sectionTitle}>ct bustercall</h2>
+        <p style={paragraph}>
+          Auto-fetch all open GitHub issues and start parallel Claude sessions.
+          Unlike <code>ct batch</code>, this command automatically fetches issues from GitHub.
+        </p>
+        <CodeBlock
+          code={`ct bustercall [options]
+
+Options:
+  -l, --label <label>        Filter by GitHub label (comma-separated for AND)
+  -n, --limit <number>       Maximum issues to process (default: 10)
+  -P, --parallel <number>    Number of parallel sessions (default: 3)
+  -T, --template <template>  Session template to use
+  -t, --token <token>        GitHub token (or use GITHUB_TOKEN env)
+  -e, --exclude <numbers>    Exclude issue numbers (comma-separated)
+  --dry-run                  Show target issues without starting`}
+          language="bash"
+        />
+
+        <h4 style={subSectionTitle}>Examples</h4>
+        <CodeBlock
+          code={`# Process all open issues (up to 10)
+ct bustercall
+
+# Filter by label
+ct bustercall --label bug
+
+# Preview target issues
+ct bustercall --dry-run
+
+# 5 parallel sessions with bugfix template
+ct bustercall -P 5 --template bugfix
+
+# Exclude specific issues
+ct bustercall --exclude 101,102,103`}
+          language="bash"
+        />
+
+        <h4 style={subSectionTitle}>Requirements</h4>
+        <p style={paragraph}>
+          Requires GitHub configuration in <code>.claudetree/config.json</code>:
+        </p>
+        <CodeBlock
+          code={`{
+  "github": {
+    "owner": "your-username",
+    "repo": "your-repo"
+  }
+}`}
+          language="json"
+          filename="config.json"
+        />
+
         <h2 id="ct-resume" style={sectionTitle}>ct resume</h2>
         <p style={paragraph}>Resume a paused session.</p>
         <CodeBlock
