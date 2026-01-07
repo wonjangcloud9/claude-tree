@@ -45,6 +45,7 @@ ct web
 | `ct demo` | 交互式演示（不消耗token） |
 | `ct batch` | 并行处理多个问题 |
 | `ct bustercall` | 自动获取所有open问题并运行并行会话 |
+| `ct clean` | 删除所有worktree（main除外） |
 | `ct web` | 启动Web仪表板 |
 
 ## 主要功能

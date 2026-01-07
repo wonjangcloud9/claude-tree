@@ -45,6 +45,7 @@ ct web
 | `ct demo` | インタラクティブデモ（トークン不使用） |
 | `ct batch` | 複数の課題を並列処理 |
 | `ct bustercall` | すべてのopen課題を自動取得して並列セッション実行 |
+| `ct clean` | すべてのworktreeを削除（main以外） |
 | `ct web` | Webダッシュボード開始 |
 
 ## 主な機能

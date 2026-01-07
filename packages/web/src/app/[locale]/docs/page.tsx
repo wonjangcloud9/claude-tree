@@ -339,6 +339,37 @@ ct bustercall --exclude 101,102,103`}
           filename="config.json"
         />
 
+        <h2 id="ct-clean" style={sectionTitle}>ct clean</h2>
+        <p style={paragraph}>
+          Remove all worktrees except the main worktree. Useful for cleaning up
+          after completing multiple tasks.
+        </p>
+        <CodeBlock
+          code={`ct clean [options]
+
+Options:
+  -f, --force      Force removal without confirmation
+  --keep-sessions  Keep session records after removal
+  --dry-run        Show what would be removed without removing`}
+          language="bash"
+        />
+
+        <h4 style={subSectionTitle}>Examples</h4>
+        <CodeBlock
+          code={`# Preview what would be removed
+ct clean --dry-run
+
+# Remove all worktrees (with confirmation)
+ct clean
+
+# Force remove without confirmation
+ct clean --force
+
+# Remove worktrees but keep session history
+ct clean --keep-sessions`}
+          language="bash"
+        />
+
         <h2 id="ct-resume" style={sectionTitle}>ct resume</h2>
         <p style={paragraph}>Resume a paused session.</p>
         <CodeBlock

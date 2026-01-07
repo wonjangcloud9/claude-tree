@@ -45,6 +45,7 @@ ct web
 | `ct demo` | Interactive demo (no tokens used) |
 | `ct batch` | Process multiple issues in parallel |
 | `ct bustercall` | Auto-fetch all open issues and run parallel sessions |
+| `ct clean` | Remove all worktrees (except main) |
 | `ct web` | Start web dashboard |
 
 ## Key Features
