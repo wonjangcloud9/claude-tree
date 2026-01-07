@@ -2,6 +2,7 @@
 
 import { program } from 'commander';
 import { batchCommand } from './commands/batch.js';
+import { bustercallCommand } from './commands/bustercall.js';
 import { demoCommand } from './commands/demo.js';
 import { doctorCommand } from './commands/doctor.js';
 import { initCommand } from './commands/init.js';
@@ -18,6 +19,7 @@ program
   .version('0.1.0');
 
 program.addCommand(batchCommand);
+program.addCommand(bustercallCommand);
 program.addCommand(demoCommand);
 program.addCommand(doctorCommand);
 program.addCommand(initCommand);
