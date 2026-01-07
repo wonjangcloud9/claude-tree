@@ -146,13 +146,15 @@ export class ValidationGateRunner {
  */
 export const DEFAULT_GATES = {
   node: [
+    { name: 'install', command: 'npm ci', required: true },
     { name: 'test', command: 'npm test', required: true },
     { name: 'type', command: 'npx tsc --noEmit', required: true },
     { name: 'lint', command: 'npm run lint', required: false },
   ],
   pnpm: [
-    { name: 'test', command: 'pnpm test', required: true },
-    { name: 'type', command: 'pnpm tsc --noEmit', required: true },
+    { name: 'install', command: 'pnpm install --frozen-lockfile', required: true },
+    { name: 'test', command: 'pnpm test:run', required: true },
+    { name: 'type', command: 'pnpm -r exec tsc --noEmit', required: true },
     { name: 'lint', command: 'pnpm lint', required: false },
   ],
   python: [

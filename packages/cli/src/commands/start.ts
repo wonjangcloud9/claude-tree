@@ -85,13 +85,17 @@ function parseGates(gatesStr: string, testCommand?: string): ValidationGate[] {
   const gateNames = gatesStr.split(',').map(g => g.trim().toLowerCase());
   const gates: ValidationGate[] = [];
 
+  // Always run pnpm install first to ensure dependencies are available
+  gates.push({ name: 'install', command: 'pnpm install --frozen-lockfile', required: true });
+
   for (const name of gateNames) {
     switch (name) {
       case 'test':
-        gates.push({ name: 'test', command: testCommand ?? 'pnpm test', required: true });
+        gates.push({ name: 'test', command: testCommand ?? 'pnpm test:run', required: true });
         break;
       case 'type':
-        gates.push({ name: 'type', command: 'pnpm tsc --noEmit', required: true });
+        // Use pnpm -r to run in all workspace packages
+        gates.push({ name: 'type', command: 'pnpm -r exec tsc --noEmit', required: true });
         break;
       case 'lint':
         gates.push({ name: 'lint', command: 'pnpm lint', required: false });

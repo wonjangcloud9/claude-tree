@@ -15,6 +15,8 @@ interface BustercallOptions {
   parallel: number;
   dryRun: boolean;
   exclude?: string;
+  sequential: boolean;
+  conflictLabels?: string;
 }
 
 interface Config {
@@ -73,6 +75,59 @@ function truncate(str: string, maxLen: number): string {
   return str.slice(0, maxLen - 3) + '...';
 }
 
+// Keywords that indicate potential conflicts with config/shared files
+const CONFLICT_KEYWORDS = [
+  'package.json', 'tsconfig', 'vitest', 'eslint', 'config',
+  'dependencies', 'devDependencies', 'workspace', 'monorepo',
+  'pnpm-lock', 'package-lock', 'yarn.lock', 'infrastructure',
+  '설정', '의존성', '패키지', // Korean
+];
+
+// Labels that typically indicate config/infra changes
+const DEFAULT_CONFLICT_LABELS = [
+  'dependencies', 'infrastructure', 'config', 'setup', 'tooling',
+  'build', 'ci', 'chore',
+];
+
+/**
+ * Check if an issue might conflict with config/shared files
+ */
+function detectPotentialConflict(issue: Issue, conflictLabels: string[]): boolean {
+  // Check labels
+  const hasConflictLabel = issue.labels.some(label =>
+    conflictLabels.some(cl => label.toLowerCase().includes(cl.toLowerCase()))
+  );
+
+  // Check title for conflict keywords
+  const titleLower = issue.title.toLowerCase();
+  const hasConflictKeyword = CONFLICT_KEYWORDS.some(kw =>
+    titleLower.includes(kw.toLowerCase())
+  );
+
+  return hasConflictLabel || hasConflictKeyword;
+}
+
+/**
+ * Group issues by conflict potential
+ */
+function groupIssuesByConflict(
+  issues: Issue[],
+  conflictLabels: string[]
+): { conflicting: Issue[]; safe: Issue[] } {
+  const conflicting: Issue[] = [];
+  const safe: Issue[] = [];
+
+  for (const issue of issues) {
+    if (detectPotentialConflict(issue, conflictLabels)) {
+      conflicting.push(issue);
+    } else {
+      safe.push(issue);
+    }
+  }
+
+  return { conflicting, safe };
+}
+
 function printStatus(items: BustercallItem[]): void {
   console.clear();
   console.log('\n=== Bustercall ===\n');
@@ -112,6 +167,8 @@ export const bustercallCommand = new Command('bustercall')
   .option('-t, --token <token>', 'GitHub token (or use GITHUB_TOKEN env)')
   .option('-e, --exclude <numbers>', 'Exclude issue numbers (comma-separated)')
   .option('--dry-run', 'Show target issues without starting', false)
+  .option('-S, --sequential', 'Force sequential execution (no parallel)', false)
+  .option('--conflict-labels <labels>', 'Labels that indicate potential conflicts (comma-separated)')
   .action(async (options: BustercallOptions) => {
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
@@ -171,32 +228,86 @@ export const bustercallCommand = new Command('bustercall')
       process.exit(0);
     }
 
+    // Parse conflict labels
+    const conflictLabels = options.conflictLabels
+      ? options.conflictLabels.split(',').map(l => l.trim())
+      : DEFAULT_CONFLICT_LABELS;
+
+    // Detect potential conflicts
+    const { conflicting, safe } = groupIssuesByConflict(issues, conflictLabels);
+
     // Dry run mode
     if (options.dryRun) {
       console.log('\n[Dry Run] Would start sessions for:\n');
-      issues.forEach((issue, i) => {
-        console.log(`  ${i + 1}. #${issue.number} - ${issue.title}`);
-        if (issue.labels.length > 0) {
-          console.log(`     Labels: ${issue.labels.join(', ')}`);
-        }
-      });
+
+      if (conflicting.length > 0) {
+        console.log('\x1b[33m⚠️  Potential Conflict Issues (will run sequentially):\x1b[0m');
+        conflicting.forEach((issue, i) => {
+          console.log(`  ${i + 1}. #${issue.number} - ${issue.title}`);
+          if (issue.labels.length > 0) {
+            console.log(`     Labels: ${issue.labels.join(', ')}`);
+          }
+        });
+        console.log('');
+      }
+
+      if (safe.length > 0) {
+        console.log('\x1b[32m✓ Safe Issues (will run in parallel):\x1b[0m');
+        safe.forEach((issue, i) => {
+          console.log(`  ${i + 1}. #${issue.number} - ${issue.title}`);
+          if (issue.labels.length > 0) {
+            console.log(`     Labels: ${issue.labels.join(', ')}`);
+          }
+        });
+      }
+
+      if (conflicting.length > 0 && !options.sequential) {
+        console.log('\n\x1b[90mTip: Use -S/--sequential to force all issues to run sequentially\x1b[0m');
+      }
+
       return;
     }
 
+    // Warn about conflicts
+    if (conflicting.length > 0) {
+      console.log(`\n\x1b[33m⚠️  Detected ${conflicting.length} issue(s) that may modify shared files:\x1b[0m`);
+      conflicting.forEach(issue => {
+        console.log(`   - #${issue.number}: ${truncate(issue.title, 50)}`);
+      });
+      console.log('\x1b[33m   These will run sequentially to avoid merge conflicts.\x1b[0m\n');
+    }
+
+    // Determine effective parallel limit
+    // If sequential mode or all issues are conflicting, run one at a time
+    const effectiveParallel = options.sequential ? 1 : parseInt(options.parallel as unknown as string, 10);
+
+    // Reorder: run safe issues first (in parallel), then conflicting issues (sequentially)
+    const orderedIssues = options.sequential ? issues : [...safe, ...conflicting];
+
     // Initialize items
-    const items: BustercallItem[] = issues.map((issue) => ({
+    const items: BustercallItem[] = orderedIssues.map((issue) => ({
       issue,
       status: 'pending',
     }));
 
-    const parallelLimit = parseInt(options.parallel as unknown as string, 10);
     let runningCount = 0;
     let currentIndex = 0;
 
+    // Track which issues are "safe" for parallel execution
+    const safeIssueNumbers = new Set(safe.map(i => i.number));
+
     const startNext = async () => {
-      while (runningCount < parallelLimit && currentIndex < items.length) {
+      while (currentIndex < items.length) {
         const item = items[currentIndex];
         if (!item) break;
+
+        const isSafe = safeIssueNumbers.has(item.issue.number);
+        const currentParallelLimit = (isSafe && !options.sequential) ? effectiveParallel : 1;
+
+        // Wait if we're at the parallel limit
+        if (runningCount >= currentParallelLimit) {
+          break;
+        }
 
         currentIndex++;
         runningCount++;
@@ -216,12 +327,16 @@ export const bustercallCommand = new Command('bustercall')
 
         runningCount--;
         printStatus(items);
+
+        // Continue to next item
+        await startNext();
       }
     };
 
-    // Start initial batch
+    // Start initial batch (respecting parallel limits)
     const promises: Promise<void>[] = [];
-    for (let i = 0; i < parallelLimit && i < items.length; i++) {
+    const initialBatch = Math.min(effectiveParallel, safe.length || 1);
+    for (let i = 0; i < initialBatch && i < items.length; i++) {
       promises.push(startNext());
     }
 
