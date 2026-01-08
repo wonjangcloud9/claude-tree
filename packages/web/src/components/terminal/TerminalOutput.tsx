@@ -17,10 +17,25 @@ export function TerminalOutput({ events, maxLines = 100, sessionId }: TerminalOu
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [newEventIds, setNewEventIds] = useState<Set<string>>(new Set());
+  const prevEventCountRef = useRef(0);
 
   const outputEvents = events
     .filter((e) => e.type === 'output' || e.type === 'tool_call' || e.type === 'error')
     .slice(-maxLines);
+
+  // Track new events for animation
+  useEffect(() => {
+    if (outputEvents.length > prevEventCountRef.current) {
+      const newIds = new Set<string>();
+      outputEvents.slice(prevEventCountRef.current).forEach((e) => newIds.add(e.id));
+      setNewEventIds(newIds);
+      // Clear "new" status after animation
+      const timer = setTimeout(() => setNewEventIds(new Set()), 1500);
+      return () => clearTimeout(timer);
+    }
+    prevEventCountRef.current = outputEvents.length;
+  }, [outputEvents]);
 
   useEffect(() => {
     if (containerRef.current && isAtBottom) {
@@ -162,7 +177,13 @@ export function TerminalOutput({ events, maxLines = 100, sessionId }: TerminalOu
         ) : (
           <>
             {outputEvents.map((event, index) => (
-              <TerminalLine key={event.id} event={event} lineNumber={index + 1} locale={locale} />
+              <TerminalLine
+                key={event.id}
+                event={event}
+                lineNumber={index + 1}
+                locale={locale}
+                isNew={newEventIds.has(event.id)}
+              />
             ))}
             {/* Blinking cursor at the end */}
             <span style={{
@@ -208,7 +229,17 @@ export function TerminalOutput({ events, maxLines = 100, sessionId }: TerminalOu
   );
 }
 
-function TerminalLine({ event, lineNumber, locale }: { event: SessionEvent; lineNumber: number; locale: Locale }) {
+function TerminalLine({
+  event,
+  lineNumber,
+  locale,
+  isNew,
+}: {
+  event: SessionEvent;
+  lineNumber: number;
+  locale: Locale;
+  isNew?: boolean;
+}) {
   const getLineStyle = () => {
     if (event.type === 'error') {
       return {
@@ -231,7 +262,12 @@ function TerminalLine({ event, lineNumber, locale }: { event: SessionEvent; line
         display: 'flex',
         gap: '12px',
         marginBottom: '4px',
-        animation: 'fade-in var(--duration-fast) var(--ease-out)',
+        animation: isNew ? 'typing-appear 0.3s ease-out' : 'fade-in var(--duration-fast) var(--ease-out)',
+        background: isNew ? 'rgba(34, 197, 94, 0.1)' : undefined,
+        borderLeft: isNew ? '2px solid var(--terminal-green)' : undefined,
+        paddingLeft: isNew ? '8px' : undefined,
+        marginLeft: isNew ? '-10px' : undefined,
+        transition: 'background 0.5s ease-out, border-left 0.5s ease-out',
         ...getLineStyle(),
       }}
     >

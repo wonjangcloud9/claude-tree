@@ -6,3 +6,4 @@ export * from './github/index.js';
 export * from './slack/index.js';
 export * from './logger/index.js';
 export * from './validation/index.js';
+export * from './ai/index.js';

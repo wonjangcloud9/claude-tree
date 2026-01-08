@@ -11,6 +11,7 @@ import {
   DEFAULT_TEMPLATES,
   SlackNotifier,
   ValidationGateRunner,
+  generateAIReviewSummary,
   type ClaudeOutputEvent,
 } from '@claudetree/core';
 import type {
@@ -590,6 +591,41 @@ export const startCommand = new Command('start')
         }
       } else if (!tddEnabled && session.status !== 'failed' && !budgetExceeded) {
         session.status = 'completed';
+      }
+
+      // Generate AI Review Summary for completed sessions
+      if (session.status === 'completed') {
+        console.log('\n\x1b[36m🤖 Generating AI Code Review Summary...\x1b[0m');
+        try {
+          const aiReview = await generateAIReviewSummary({
+            sessionId: session.id,
+            workingDir: worktree.path,
+            baseBranch: 'develop',
+          });
+
+          if (aiReview) {
+            // Save AI review to file
+            const reviewsDir = join(cwd, CONFIG_DIR, 'ai-reviews');
+            await mkdir(reviewsDir, { recursive: true });
+            await writeFile(
+              join(reviewsDir, `${session.id}.json`),
+              JSON.stringify({ ...aiReview, generatedAt: aiReview.generatedAt.toISOString() }, null, 2)
+            );
+
+            // Print summary
+            console.log(`\n   \x1b[32m✓ Summary:\x1b[0m ${aiReview.summary}`);
+            console.log(`   \x1b[33m⚠ Risk Level:\x1b[0m ${aiReview.riskLevel.toUpperCase()}`);
+            if (aiReview.potentialIssues.length > 0) {
+              console.log(`   \x1b[31m! Issues:\x1b[0m ${aiReview.potentialIssues.length} potential issue(s) found`);
+              for (const issue of aiReview.potentialIssues.slice(0, 3)) {
+                const icon = issue.severity === 'critical' ? '🔴' : issue.severity === 'warning' ? '🟡' : '🔵';
+                console.log(`      ${icon} ${issue.title}`);
+              }
+            }
+          }
+        } catch (err) {
+          console.log('   \x1b[33m⚠ Could not generate AI review summary\x1b[0m');
+        }
       }
 
       const totalDuration = Date.now() - sessionStartTime;

@@ -200,6 +200,23 @@
   50% { transform: translateY(-3px); }
 }
 
+/* Live streaming typing effect */
+@keyframes typing-appear {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px);
+    background: rgba(34, 197, 94, 0.2);
+  }
+  50% {
+    background: rgba(34, 197, 94, 0.15);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    background: rgba(34, 197, 94, 0.1);
+  }
+}
+
 /* ============================================
    Base Styles
    ============================================ */

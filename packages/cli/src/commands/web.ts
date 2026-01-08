@@ -38,15 +38,21 @@ export const webCommand = new Command('web')
 
     // Watch sessions.json for changes and broadcast updates
     const sessionsPath = join(configDir, 'sessions.json');
-    let lastContent = '';
-    let fileWatcher: FSWatcher | null = null;
+    const eventsDir = join(configDir, 'events');
+    let lastSessionsContent = '';
+    let sessionFileWatcher: FSWatcher | null = null;
+    let eventsWatcher: FSWatcher | null = null;
     let debounceTimer: NodeJS.Timeout | null = null;
+    let eventsDebounceTimer: NodeJS.Timeout | null = null;
+
+    // Track last event count per session for incremental updates
+    const lastEventCounts = new Map<string, number>();
 
     const broadcastSessionUpdate = async () => {
       try {
         const content = await readFile(sessionsPath, 'utf-8');
-        if (content !== lastContent) {
-          lastContent = content;
+        if (content !== lastSessionsContent) {
+          lastSessionsContent = content;
           const sessions = JSON.parse(content);
           wss.broadcast({
             type: 'session:updated',
@@ -59,23 +65,62 @@ export const webCommand = new Command('web')
       }
     };
 
+    // Broadcast new events only (incremental)
+    const broadcastNewEvents = async (sessionId: string) => {
+      try {
+        const eventPath = join(eventsDir, `${sessionId}.json`);
+        const content = await readFile(eventPath, 'utf-8');
+        const events = JSON.parse(content);
+        const lastCount = lastEventCounts.get(sessionId) || 0;
+
+        if (events.length > lastCount) {
+          const newEvents = events.slice(lastCount);
+          lastEventCounts.set(sessionId, events.length);
+
+          // Broadcast each new event for live streaming effect
+          for (const event of newEvents) {
+            wss.broadcast({
+              type: 'event:created',
+              payload: { sessionId, event },
+              timestamp: new Date(),
+            });
+          }
+        }
+      } catch {
+        // Events file might not exist yet
+      }
+    };
+
     // Initial read
     await broadcastSessionUpdate();
 
-    // Watch for changes with debounce
+    // Watch sessions.json for changes
     try {
-      fileWatcher = watch(sessionsPath, { persistent: true }, () => {
+      sessionFileWatcher = watch(sessionsPath, { persistent: true }, () => {
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(broadcastSessionUpdate, 100);
       });
     } catch {
-      // sessions.json might not exist yet, watch the directory instead
-      fileWatcher = watch(configDir, { persistent: true }, (_, filename) => {
+      sessionFileWatcher = watch(configDir, { persistent: true }, (_, filename) => {
         if (filename === 'sessions.json') {
           if (debounceTimer) clearTimeout(debounceTimer);
           debounceTimer = setTimeout(broadcastSessionUpdate, 100);
         }
       });
+    }
+
+    // Watch events directory for live streaming
+    try {
+      await access(eventsDir);
+      eventsWatcher = watch(eventsDir, { persistent: true }, (_, filename) => {
+        if (filename?.endsWith('.json')) {
+          const sessionId = filename.replace('.json', '');
+          if (eventsDebounceTimer) clearTimeout(eventsDebounceTimer);
+          eventsDebounceTimer = setTimeout(() => broadcastNewEvents(sessionId), 50);
+        }
+      });
+    } catch {
+      // Events directory might not exist yet - will be created when first session starts
     }
 
     // Start Next.js dev server
@@ -109,7 +154,9 @@ export const webCommand = new Command('web')
     const cleanup = () => {
       console.log('\nShutting down...');
       if (debounceTimer) clearTimeout(debounceTimer);
-      if (fileWatcher) fileWatcher.close();
+      if (eventsDebounceTimer) clearTimeout(eventsDebounceTimer);
+      if (sessionFileWatcher) sessionFileWatcher.close();
+      if (eventsWatcher) eventsWatcher.close();
       wss.close();
       nextProcess.kill();
       process.exit(0);

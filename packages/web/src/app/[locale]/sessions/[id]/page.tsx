@@ -8,11 +8,13 @@ import type {
   SessionEvent,
   ToolApproval,
   CodeReview,
+  SerializedAIReviewSummary,
 } from '@claudetree/shared';
 import { Timeline } from '@/components/timeline/Timeline';
 import { TerminalOutput } from '@/components/terminal/TerminalOutput';
 import { ApprovalList } from '@/components/approval/ApprovalList';
 import { CodeReviewPanel } from '@/components/review/CodeReviewPanel';
+import { AIReviewSummary } from '@/components/review/AIReviewSummary';
 import { Skeleton, SkeletonText } from '@/components/Skeleton';
 import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -27,16 +29,18 @@ export default function SessionDetailPage() {
   const [events, setEvents] = useState<SessionEvent[]>([]);
   const [approvals, setApprovals] = useState<ToolApproval[]>([]);
   const [review, setReview] = useState<CodeReview | null>(null);
+  const [aiReview, setAIReview] = useState<SerializedAIReviewSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [sessionRes, eventsRes, approvalsRes, reviewRes] = await Promise.all([
+      const [sessionRes, eventsRes, approvalsRes, reviewRes, aiReviewRes] = await Promise.all([
         fetch(`/api/sessions/${id}`),
         fetch(`/api/sessions/${id}/events?limit=100`),
         fetch(`/api/sessions/${id}/approvals`),
         fetch(`/api/sessions/${id}/review`),
+        fetch(`/api/sessions/${id}/ai-review`),
       ]);
 
       if (!sessionRes.ok) throw new Error('Session not found');
@@ -46,6 +50,7 @@ export default function SessionDetailPage() {
       setEvents(eventsData.events || []);
       setApprovals(await approvalsRes.json());
       setReview(await reviewRes.json());
+      setAIReview(await aiReviewRes.json());
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -62,7 +67,31 @@ export default function SessionDetailPage() {
   const { connectionState, retryCount, lastError, reconnect } = useWebSocket({
     url: wsUrl,
     onMessage: (message: unknown) => {
-      const msg = message as { payload?: { sessionId?: string } };
+      const msg = message as {
+        type?: string;
+        payload?: { sessionId?: string; event?: SessionEvent; sessions?: Session[] };
+      };
+
+      // Handle incremental event updates (live streaming)
+      if (msg.type === 'event:created' && msg.payload?.sessionId === id && msg.payload?.event) {
+        setEvents((prev) => {
+          // Avoid duplicates
+          if (prev.some((e) => e.id === msg.payload!.event!.id)) return prev;
+          return [...prev, msg.payload!.event!];
+        });
+        return;
+      }
+
+      // Handle session updates
+      if (msg.type === 'session:updated' && msg.payload?.sessions) {
+        const updatedSession = msg.payload.sessions.find((s: Session) => s.id === id);
+        if (updatedSession) {
+          setSession(updatedSession);
+        }
+        return;
+      }
+
+      // Fallback: refetch if relevant to this session
       if (msg.payload?.sessionId === id) {
         fetchData();
       }
@@ -333,6 +362,15 @@ export default function SessionDetailPage() {
           />
         </section>
       </div>
+
+      {/* AI Review Summary - Full Width */}
+      <section style={{ marginTop: '24px' }}>
+        <h3 style={{ fontSize: '16px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '18px' }}>🤖</span>
+          AI Code Review Summary
+        </h3>
+        <AIReviewSummary review={aiReview} />
+      </section>
     </main>
   );
 }
