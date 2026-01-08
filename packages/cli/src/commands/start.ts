@@ -3,12 +3,10 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { access, readFile, writeFile, mkdir } from 'node:fs/promises';
 import {
-  GitWorktreeAdapter,
   ClaudeSessionAdapter,
   FileSessionRepository,
   FileEventRepository,
   FileToolApprovalRepository,
-  GitHubAdapter,
   TemplateLoader,
   DEFAULT_TEMPLATES,
   SlackNotifier,
@@ -17,7 +15,6 @@ import {
 } from '@claudetree/core';
 import type {
   Session,
-  Issue,
   EventType,
   SessionTemplate,
   ProgressStep,
@@ -27,12 +24,16 @@ import type {
   ValidationGate,
 } from '@claudetree/shared';
 
+import { parseIssueInput } from './start/parseIssueInput.js';
+import { createOrFindWorktree } from './start/createWorktree.js';
+import { buildPrompt, buildSystemPrompt, formatDuration } from './start/buildPrompt.js';
+
 const CONFIG_DIR = '.claudetree';
 
 interface StartOptions {
   prompt?: string;
   noSession: boolean;
-  tdd: boolean;  // default true, --no-tdd to disable
+  tdd: boolean;
   skill?: string;
   branch?: string;
   token?: string;
@@ -43,19 +44,6 @@ interface StartOptions {
   maxRetries?: string;
   gates?: string;
   testCommand?: string;
-}
-
-/**
- * Sanitize natural language input to a valid branch name
- */
-function sanitizeBranchName(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9가-힣\s-]/g, '') // Allow Korean characters
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 50); // Max length
 }
 
 interface Config {
@@ -85,7 +73,6 @@ function parseGates(gatesStr: string, testCommand?: string): ValidationGate[] {
   const gateNames = gatesStr.split(',').map(g => g.trim().toLowerCase());
   const gates: ValidationGate[] = [];
 
-  // Always run pnpm install first to ensure dependencies are available
   gates.push({ name: 'install', command: 'pnpm install --frozen-lockfile', required: true });
 
   for (const name of gateNames) {
@@ -94,7 +81,6 @@ function parseGates(gatesStr: string, testCommand?: string): ValidationGate[] {
         gates.push({ name: 'test', command: testCommand ?? 'pnpm test:run', required: true });
         break;
       case 'type':
-        // Use pnpm -r to run in all workspace packages
         gates.push({ name: 'type', command: 'pnpm -r exec tsc --noEmit', required: true });
         break;
       case 'lint':
@@ -109,14 +95,69 @@ function parseGates(gatesStr: string, testCommand?: string): ValidationGate[] {
   return gates;
 }
 
-function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
+function parseToolCall(
+  content: string
+): { toolName: string; parameters: Record<string, unknown> } | null {
+  const match = content.match(/^(\w+):\s*(.+)$/);
+  if (!match) return null;
 
-  if (hours > 0) return `${hours}h ${minutes % 60}m`;
-  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-  return `${seconds}s`;
+  try {
+    return {
+      toolName: match[1] ?? '',
+      parameters: JSON.parse(match[2] ?? '{}'),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function detectProgressStep(toolName: string, params: Record<string, unknown>): ProgressStep | null {
+  const command = String(params.command ?? '');
+
+  if (toolName === 'Bash') {
+    if (command.includes('test') || command.includes('jest') || command.includes('vitest') || command.includes('pytest')) {
+      return 'testing';
+    }
+    if (command.includes('git commit')) {
+      return 'committing';
+    }
+    if (command.includes('gh pr create') || command.includes('git push')) {
+      return 'creating_pr';
+    }
+  }
+
+  if (toolName === 'Edit' || toolName === 'Write') {
+    return 'implementing';
+  }
+
+  if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
+    return 'analyzing';
+  }
+
+  return null;
+}
+
+function updateProgress(
+  progress: SessionProgress,
+  newStep: ProgressStep
+): SessionProgress {
+  const stepOrder: ProgressStep[] = ['analyzing', 'implementing', 'testing', 'committing', 'creating_pr'];
+  const currentIdx = stepOrder.indexOf(progress.currentStep);
+  const newIdx = stepOrder.indexOf(newStep);
+
+  if (newIdx > currentIdx) {
+    const completed = new Set(progress.completedSteps);
+    for (let i = 0; i <= currentIdx; i++) {
+      completed.add(stepOrder[i]!);
+    }
+    return {
+      ...progress,
+      currentStep: newStep,
+      completedSteps: Array.from(completed),
+    };
+  }
+
+  return progress;
 }
 
 export const startCommand = new Command('start')
@@ -144,7 +185,6 @@ export const startCommand = new Command('start')
       process.exit(1);
     }
 
-    // Build TDD config if TDD mode enabled
     const tddEnabled = options.tdd !== false;
     let tddConfig: TDDConfig | null = null;
 
@@ -158,7 +198,6 @@ export const startCommand = new Command('start')
       };
     }
 
-    // Header
     if (tddEnabled) {
       console.log('\n\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');
       console.log('\x1b[36m║         TDD Mode Session (Default)       ║\x1b[0m');
@@ -177,106 +216,56 @@ export const startCommand = new Command('start')
       }
     }
 
-    let issueNumber: number | null = null;
-    let issueData: Issue | null = null;
-    let branchName: string;
-    let taskDescription: string | null = null; // For natural language input
-
+    // Parse issue input using extracted module
     const ghToken = options.token ?? process.env.GITHUB_TOKEN ?? config.github?.token;
+    let parsedInput;
 
-    if (issue.includes('github.com')) {
-      if (!ghToken) {
-        console.error('\nError: GitHub token required for URL. Set GITHUB_TOKEN or use --token.');
-        process.exit(1);
+    try {
+      parsedInput = await parseIssueInput(issue, {
+        token: ghToken,
+        branch: options.branch,
+        githubConfig: config.github?.owner && config.github?.repo
+          ? { owner: config.github.owner, repo: config.github.repo }
+          : undefined,
+      });
+
+      if (parsedInput.issueData) {
+        console.log(`\nFetched issue #${parsedInput.issueNumber}`);
+        console.log(`  Title: ${parsedInput.issueData.title}`);
+        console.log(`  Labels: ${parsedInput.issueData.labels.join(', ') || 'none'}`);
+      } else if (parsedInput.taskDescription) {
+        console.log(`\n📝 Task: "${parsedInput.taskDescription}"`);
       }
+    } catch (error) {
+      console.error(`Error: ${error instanceof Error ? error.message : 'Failed to parse issue input'}`);
+      process.exit(1);
+    }
 
-      const ghAdapter = new GitHubAdapter(ghToken);
-      const parsed = ghAdapter.parseIssueUrl(issue);
+    const { issueNumber, issueData, branchName, taskDescription } = parsedInput;
 
-      if (!parsed) {
-        console.error('Error: Invalid GitHub URL format.');
-        process.exit(1);
-      }
+    // Create or find worktree using extracted module
+    let worktreeResult;
+    try {
+      worktreeResult = await createOrFindWorktree({
+        cwd,
+        worktreeDir: config.worktreeDir,
+        branchName,
+        issueNumber: issueNumber ?? undefined,
+      });
 
-      console.log(`\nFetching issue #${parsed.number} from ${parsed.owner}/${parsed.repo}...`);
-
-      try {
-        issueData = await ghAdapter.getIssue(parsed.owner, parsed.repo, parsed.number);
-        issueNumber = issueData.number;
-        branchName = options.branch ?? ghAdapter.generateBranchName(issueNumber, issueData.title);
-
-        console.log(`  Title: ${issueData.title}`);
-        console.log(`  Labels: ${issueData.labels.join(', ') || 'none'}`);
-      } catch (error) {
-        console.error(`Error: Failed to fetch issue. ${error instanceof Error ? error.message : ''}`);
-        process.exit(1);
-      }
-    } else {
-      const parsed = parseInt(issue, 10);
-      const isNumber = !isNaN(parsed);
-
-      if (isNumber && ghToken && config.github?.owner && config.github?.repo) {
-        const ghAdapter = new GitHubAdapter(ghToken);
-        try {
-          console.log(`\nFetching issue #${parsed}...`);
-          issueData = await ghAdapter.getIssue(config.github.owner, config.github.repo, parsed);
-          issueNumber = issueData.number;
-          branchName = options.branch ?? ghAdapter.generateBranchName(issueNumber, issueData.title);
-
-          console.log(`  Title: ${issueData.title}`);
-        } catch {
-          issueNumber = parsed;
-          branchName = options.branch ?? `issue-${issueNumber}`;
-        }
-      } else if (isNumber) {
-        issueNumber = parsed;
-        branchName = options.branch ?? `issue-${issueNumber}`;
+      if (worktreeResult.isExisting) {
+        console.log(`\nUsing existing worktree: ${branchName}`);
       } else {
-        // Natural language input - use as task description
-        taskDescription = issue;
-        branchName = options.branch ?? `task-${sanitizeBranchName(issue)}`;
-        console.log(`\n📝 Task: "${taskDescription}"`);
+        console.log(`\nCreating worktree: ${branchName}`);
       }
+      console.log(`  Branch: ${worktreeResult.worktree.branch}`);
+      console.log(`  Path: ${worktreeResult.worktree.path}`);
+    } catch (error) {
+      console.error(`Error: ${error instanceof Error ? error.message : 'Failed to create worktree'}`);
+      process.exit(1);
     }
 
-    const worktreePath = join(cwd, config.worktreeDir, branchName);
-
-    const gitAdapter = new GitWorktreeAdapter(cwd);
-    const existingWorktrees = await gitAdapter.list();
-    const existingWorktree = existingWorktrees.find(
-      (wt) => wt.branch === branchName || wt.path.endsWith(branchName)
-    );
-
-    let worktree: { id: string; path: string; branch: string };
-
-    if (existingWorktree) {
-      console.log(`\nUsing existing worktree: ${branchName}`);
-      worktree = {
-        id: randomUUID(),
-        path: existingWorktree.path,
-        branch: existingWorktree.branch,
-      };
-      console.log(`  Branch: ${worktree.branch}`);
-      console.log(`  Path: ${worktree.path}`);
-    } else {
-      console.log(`\nCreating worktree: ${branchName}`);
-
-      try {
-        worktree = await gitAdapter.create({
-          path: worktreePath,
-          branch: branchName,
-          issueNumber: issueNumber ?? undefined,
-        });
-
-        console.log(`  Branch: ${worktree.branch}`);
-        console.log(`  Path: ${worktree.path}`);
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error(`Error: ${error.message}`);
-        }
-        process.exit(1);
-      }
-    }
+    const { worktree } = worktreeResult;
 
     try {
       if (options.noSession) {
@@ -337,121 +326,25 @@ export const startCommand = new Command('start')
         console.log(`  Template: ${template.name}`);
       }
 
-      // Build prompt
-      let prompt: string;
-      if (options.prompt) {
-        prompt = options.prompt;
-      } else if (issueData) {
-        prompt = `You are working on Issue #${issueNumber}: "${issueData.title}"
-
-Issue Description:
-${issueData.body || 'No description provided.'}
-
-IMPORTANT: Do NOT just analyze or suggest. Actually IMPLEMENT the solution.
-${tddEnabled ? '\nStart with TDD - write a failing test first!' : ''}`;
-      } else if (issueNumber) {
-        prompt = `Working on issue #${issueNumber}. ${tddEnabled ? 'Start with TDD - write a failing test first!' : 'Implement the solution.'}`;
-      } else if (taskDescription) {
-        // Natural language task
-        prompt = `Your task: ${taskDescription}
-
-IMPORTANT: Do NOT just analyze or suggest. Actually IMPLEMENT the solution.
-${tddEnabled ? '\nStart with TDD - write a failing test first!' : ''}`;
-      } else {
-        prompt = `Working on ${branchName}. ${tddEnabled ? 'Start with TDD - write a failing test first!' : 'Implement any required changes.'}`;
-      }
-
-      if (template) {
-        const prefix = template.promptPrefix ? `${template.promptPrefix}\n\n` : '';
-        const suffix = template.promptSuffix ? `\n\n${template.promptSuffix}` : '';
-        prompt = `${prefix}${prompt}${suffix}`;
-      }
-
-      // Build system prompt
-      let systemPrompt: string | undefined;
+      // Build prompt using extracted module
       const effectiveSkill = template?.skill || options.skill;
+      const prompt = buildPrompt({
+        issueNumber,
+        issueData,
+        branchName,
+        taskDescription,
+        tddEnabled,
+        template,
+        customPrompt: options.prompt,
+      });
 
-      if (tddEnabled) {
-        // TDD system prompt (default)
-        systemPrompt = `You are in TDD (Test-Driven Development) mode. Follow this STRICT workflow:
-
-## TDD Cycle (Repeat until done)
-
-### 1. RED Phase - Write Failing Test
-- Write ONE failing test that describes the expected behavior
-- Run the test to confirm it fails
-- Commit: "test: add test for <feature>"
-
-### 2. GREEN Phase - Minimal Implementation
-- Write the MINIMUM code to make the test pass
-- Run tests to confirm they pass
-- Commit: "feat: implement <feature>"
-
-### 3. REFACTOR Phase (Optional)
-- Clean up code while keeping tests green
-- Commit: "refactor: improve <description>"
-
-## Rules
-- NEVER write implementation before tests
-- ONE test at a time
-- Run tests after EVERY change
-- Stop when all requirements are met
-
-## Validation Gates (Must Pass Before PR)
-${tddConfig!.gates.map(g => `- ${g.name}: \`${g.command}\` ${g.required ? '(REQUIRED)' : '(optional)'}`).join('\n')}
-
-## Time Limits
-- Total: ${formatDuration(tddConfig!.timeout)}
-- Idle: ${formatDuration(tddConfig!.idleTimeout)}
-
-When done, create a PR to the develop branch.`;
-      } else if (effectiveSkill === 'review') {
-        systemPrompt = 'Review code thoroughly for security, quality, and best practices.';
-      } else if (effectiveSkill === 'docs') {
-        systemPrompt = `You are a documentation specialist. Generate comprehensive documentation.
-
-## Documentation Workflow
-
-### 1. Analysis Phase
-- Read package.json for project metadata
-- Scan src/ directory structure
-- Identify exported APIs and types
-- Note configuration files
-
-### 2. README Generation
-Structure your README with:
-- Project title and badges
-- Description and features
-- Installation instructions
-- Quick start example
-- API reference (if applicable)
-- Configuration options
-- Contributing guidelines
-
-### 3. API Documentation
-For each public module:
-- Purpose and usage
-- Function signatures with types
-- Parameter descriptions
-- Return value descriptions
-- Code examples
-
-### 4. Output
-- Create/update README.md
-- Create docs/ folder for detailed docs if needed
-- Use Markdown formatting
-- Include table of contents for long docs
-
-## Rules
-- Be concise but complete
-- Use code blocks with proper language tags
-- Include real, working examples
-- Document edge cases and error handling`;
-      }
-
-      if (template?.systemPrompt) {
-        systemPrompt = template.systemPrompt;
-      }
+      // Build system prompt using extracted module
+      const systemPrompt = buildSystemPrompt({
+        tddEnabled,
+        tddConfig: tddConfig ?? undefined,
+        skill: effectiveSkill,
+        template,
+      });
 
       console.log('\n\x1b[36m🚀 Starting Claude session...\x1b[0m');
       if (tddEnabled) {
@@ -464,7 +357,6 @@ For each public module:
       const eventRepo = new FileEventRepository(join(cwd, CONFIG_DIR));
       const approvalRepo = new FileToolApprovalRepository(join(cwd, CONFIG_DIR));
 
-      // Save TDD state if enabled
       let tddState: TDDSessionState | null = null;
       let tddStatePath: string | null = null;
 
@@ -482,7 +374,6 @@ For each public module:
         await writeFile(tddStatePath, JSON.stringify(tddState, null, 2));
       }
 
-      // Track timeouts
       const sessionStartTime = Date.now();
       let lastOutputTime = Date.now();
       let sessionTimedOut = false;
@@ -601,7 +492,6 @@ For each public module:
         session.lastHeartbeat = new Date();
         lastOutputTime = Date.now();
 
-        // Check timeouts
         if (sessionTimedOut || idleTimedOut) {
           await claudeAdapter.stop(result.processId);
           session.status = 'failed';
@@ -648,7 +538,6 @@ For each public module:
 
       if (timeoutChecker) clearInterval(timeoutChecker);
 
-      // Run validation gates if TDD mode and session didn't fail
       if (tddEnabled && tddConfig && session.status !== 'failed' && !budgetExceeded) {
         console.log('\n\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');
         console.log('\x1b[36m║         Running Validation Gates         ║\x1b[0m');
@@ -703,7 +592,6 @@ For each public module:
         session.status = 'completed';
       }
 
-      // Final summary
       const totalDuration = Date.now() - sessionStartTime;
       console.log('\n\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');
       console.log('\x1b[36m║              Session Summary             ║\x1b[0m');
@@ -756,68 +644,3 @@ For each public module:
       process.exit(1);
     }
   });
-
-function parseToolCall(
-  content: string
-): { toolName: string; parameters: Record<string, unknown> } | null {
-  const match = content.match(/^(\w+):\s*(.+)$/);
-  if (!match) return null;
-
-  try {
-    return {
-      toolName: match[1] ?? '',
-      parameters: JSON.parse(match[2] ?? '{}'),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function detectProgressStep(toolName: string, params: Record<string, unknown>): ProgressStep | null {
-  const command = String(params.command ?? '');
-
-  if (toolName === 'Bash') {
-    if (command.includes('test') || command.includes('jest') || command.includes('vitest') || command.includes('pytest')) {
-      return 'testing';
-    }
-    if (command.includes('git commit')) {
-      return 'committing';
-    }
-    if (command.includes('gh pr create') || command.includes('git push')) {
-      return 'creating_pr';
-    }
-  }
-
-  if (toolName === 'Edit' || toolName === 'Write') {
-    return 'implementing';
-  }
-
-  if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
-    return 'analyzing';
-  }
-
-  return null;
-}
-
-function updateProgress(
-  progress: SessionProgress,
-  newStep: ProgressStep
-): SessionProgress {
-  const stepOrder: ProgressStep[] = ['analyzing', 'implementing', 'testing', 'committing', 'creating_pr'];
-  const currentIdx = stepOrder.indexOf(progress.currentStep);
-  const newIdx = stepOrder.indexOf(newStep);
-
-  if (newIdx > currentIdx) {
-    const completed = new Set(progress.completedSteps);
-    for (let i = 0; i <= currentIdx; i++) {
-      completed.add(stepOrder[i]!);
-    }
-    return {
-      ...progress,
-      currentStep: newStep,
-      completedSteps: Array.from(completed),
-    };
-  }
-
-  return progress;
-}
