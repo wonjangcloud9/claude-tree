@@ -23,6 +23,19 @@ export class GitWorktreeAdapter implements IWorktreeRepository {
   }
 
   async create(input: CreateWorktreeInput): Promise<Worktree> {
+    // Check if branch already exists and delete it
+    try {
+      await execa('git', ['rev-parse', '--verify', input.branch], {
+        cwd: this.repoPath,
+      });
+      // Branch exists, delete it first
+      await execa('git', ['branch', '-D', input.branch], {
+        cwd: this.repoPath,
+      });
+    } catch {
+      // Branch doesn't exist, continue
+    }
+
     await execa('git', ['worktree', 'add', '-b', input.branch, input.path], {
       cwd: this.repoPath,
     });

@@ -1,10 +1,13 @@
 import { Command } from 'commander';
 import { join } from 'node:path';
 import { access, readFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
+import { spawn, exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { Mutex } from 'async-mutex';
 import { GitHubAdapter, SlackNotifier } from '@claudetree/core';
 import type { Issue } from '@claudetree/shared';
+
+const execAsync = promisify(exec);
 
 const CONFIG_DIR = '.claudetree';
 
@@ -49,83 +52,105 @@ async function loadConfig(cwd: string): Promise<Config | null> {
   }
 }
 
+interface SessionInfo {
+  issueNumber?: number;
+  status?: string;
+}
+
+async function getSessionsForIssue(cwd: string, issueNumber: number): Promise<SessionInfo[]> {
+  try {
+    const sessionsPath = join(cwd, CONFIG_DIR, 'sessions.json');
+    const content = await readFile(sessionsPath, 'utf-8');
+    const sessions = JSON.parse(content) as SessionInfo[];
+    return sessions.filter((s) => s.issueNumber === issueNumber);
+  } catch {
+    return [];
+  }
+}
+
+async function waitForSessionCreated(
+  cwd: string,
+  issueNumber: number,
+  timeoutMs: number
+): Promise<boolean> {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeoutMs) {
+    const sessions = await getSessionsForIssue(cwd, issueNumber);
+    // Check if there's a running session for this issue
+    if (sessions.some((s) => s.status === 'running')) {
+      return true;
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return false;
+}
+
 async function startSession(
   issueNumber: number,
   options: { template?: string; cwd: string }
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const args = ['start', String(issueNumber)];
-    if (options.template) {
-      args.push('--template', options.template);
-    }
+  const args = ['start', String(issueNumber)];
+  if (options.template) {
+    args.push('--template', options.template);
+  }
 
-    const proc = spawn('claudetree', args, {
-      cwd: options.cwd,
-      stdio: 'pipe',
-      detached: true,
-    });
-
-    let started = false;
-    let output = '';
-    let checkInterval: NodeJS.Timeout | null = null;
-    let timeout: NodeJS.Timeout | null = null;
-
-    const cleanup = () => {
-      if (checkInterval) clearInterval(checkInterval);
-      if (timeout) clearTimeout(timeout);
-    };
-
-    proc.stdout?.on('data', (data) => {
-      output += data.toString();
-      if (
-        output.includes('Session started') ||
-        output.includes('Starting Claude') ||
-        output.includes('Created worktree')
-      ) {
-        started = true;
-      }
-    });
-
-    proc.stderr?.on('data', (data) => {
-      output += data.toString();
-    });
-
-    checkInterval = setInterval(() => {
-      if (started) {
-        cleanup();
-        proc.unref();
-        resolve();
-      }
-    }, 500);
-
-    timeout = setTimeout(() => {
-      cleanup();
-      if (started) {
-        proc.unref();
-        resolve();
-      } else {
-        proc.kill();
-        reject(new Error(`Session failed to start within 30s: ${output.slice(0, 200)}`));
-      }
-    }, 30000);
-
-    proc.on('error', (err) => {
-      cleanup();
-      reject(err);
-    });
-
-    proc.on('exit', (code) => {
-      if (code !== 0 && !started) {
-        cleanup();
-        reject(new Error(`Process exited with code ${code}: ${output.slice(0, 200)}`));
-      }
-    });
+  const proc = spawn('claudetree', args, {
+    cwd: options.cwd,
+    stdio: 'ignore',
+    detached: true,
   });
+
+  proc.unref();
+
+  // Wait for process to initialize
+  await new Promise((r) => setTimeout(r, 2000));
+
+  // Check if session was created for this specific issue (poll for up to 60 seconds)
+  const sessionCreated = await waitForSessionCreated(options.cwd, issueNumber, 60000);
+
+  if (!sessionCreated) {
+    throw new Error(`Session for issue #${issueNumber} was not created within 60 seconds`);
+  }
 }
 
 function truncate(str: string, maxLen: number): string {
   if (str.length <= maxLen) return str;
   return str.slice(0, maxLen - 3) + '...';
+}
+
+async function getIssuesWithExistingPRs(
+  owner: string,
+  repo: string
+): Promise<Set<number>> {
+  try {
+    const { stdout } = await execAsync(
+      `gh pr list --repo ${owner}/${repo} --state open --json number,body,title --limit 100`
+    );
+    const prs = JSON.parse(stdout) as Array<{ number: number; body: string; title: string }>;
+    const issuesWithPRs = new Set<number>();
+
+    for (const pr of prs) {
+      // Check title for issue references like "#123" or "issue-123"
+      const titleMatches = pr.title.match(/#(\d+)|issue-(\d+)/gi) || [];
+      for (const match of titleMatches) {
+        const num = parseInt(match.replace(/\D/g, ''), 10);
+        if (num) issuesWithPRs.add(num);
+      }
+
+      // Check body for "Closes #123", "Fixes #123", etc.
+      if (pr.body) {
+        const bodyMatches = pr.body.match(/(closes?|fixes?|resolves?)\s*#(\d+)/gi) || [];
+        for (const match of bodyMatches) {
+          const num = parseInt(match.replace(/\D/g, ''), 10);
+          if (num) issuesWithPRs.add(num);
+        }
+      }
+    }
+
+    return issuesWithPRs;
+  } catch {
+    return new Set();
+  }
 }
 
 // Keywords that indicate potential conflicts with config/shared files
@@ -265,6 +290,18 @@ export const bustercallCommand = new Command('bustercall')
         options.exclude.split(',').map((n) => parseInt(n.trim(), 10))
       );
       issues = issues.filter((i) => !excludeSet.has(i.number));
+    }
+
+    // Filter out issues that already have PRs
+    console.log('Checking for existing PRs...');
+    const issuesWithPRs = await getIssuesWithExistingPRs(config.github.owner, config.github.repo);
+    if (issuesWithPRs.size > 0) {
+      const before = issues.length;
+      issues = issues.filter((i) => !issuesWithPRs.has(i.number));
+      const skipped = before - issues.length;
+      if (skipped > 0) {
+        console.log(`Skipped ${skipped} issue(s) with existing PRs`);
+      }
     }
 
     // Apply limit
