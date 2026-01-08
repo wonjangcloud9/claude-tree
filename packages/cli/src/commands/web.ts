@@ -1,7 +1,8 @@
 import { Command } from 'commander';
 import { join } from 'node:path';
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { watch, type FSWatcher } from 'node:fs';
 import { WebSocketBroadcaster } from '@claudetree/core';
 
 const CONFIG_DIR = '.claudetree';
@@ -35,6 +36,48 @@ export const webCommand = new Command('web')
     const wss = new WebSocketBroadcaster(wsPort);
     console.log(`  WebSocket: ws://localhost:${wsPort}`);
 
+    // Watch sessions.json for changes and broadcast updates
+    const sessionsPath = join(configDir, 'sessions.json');
+    let lastContent = '';
+    let fileWatcher: FSWatcher | null = null;
+    let debounceTimer: NodeJS.Timeout | null = null;
+
+    const broadcastSessionUpdate = async () => {
+      try {
+        const content = await readFile(sessionsPath, 'utf-8');
+        if (content !== lastContent) {
+          lastContent = content;
+          const sessions = JSON.parse(content);
+          wss.broadcast({
+            type: 'session:updated',
+            payload: { sessions },
+            timestamp: new Date(),
+          });
+        }
+      } catch {
+        // File might not exist yet or be temporarily unavailable
+      }
+    };
+
+    // Initial read
+    await broadcastSessionUpdate();
+
+    // Watch for changes with debounce
+    try {
+      fileWatcher = watch(sessionsPath, { persistent: true }, () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(broadcastSessionUpdate, 100);
+      });
+    } catch {
+      // sessions.json might not exist yet, watch the directory instead
+      fileWatcher = watch(configDir, { persistent: true }, (_, filename) => {
+        if (filename === 'sessions.json') {
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(broadcastSessionUpdate, 100);
+        }
+      });
+    }
+
     // Start Next.js dev server
     const webPath = join(cwd, 'node_modules', '@claudetree', 'web');
 
@@ -65,6 +108,8 @@ export const webCommand = new Command('web')
     // Handle cleanup
     const cleanup = () => {
       console.log('\nShutting down...');
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (fileWatcher) fileWatcher.close();
       wss.close();
       nextProcess.kill();
       process.exit(0);
