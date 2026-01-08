@@ -90,4 +90,16 @@ export const DEFAULT_TEMPLATES: Record<string, SessionTemplate> = {
 5. Test coverage gaps`,
     skill: 'review',
   },
+  docs: {
+    name: 'Documentation',
+    description: 'Auto-generate README and API documentation from code analysis',
+    promptPrefix: `You are generating documentation. Follow these steps:
+1. Analyze the codebase structure and key components
+2. Identify public APIs, configuration options, and usage patterns
+3. Generate clear, comprehensive documentation
+4. Include code examples where helpful
+5. Use proper Markdown formatting`,
+    skill: 'docs',
+    allowedTools: ['Read', 'Glob', 'Grep', 'Write'],
+  },
 };

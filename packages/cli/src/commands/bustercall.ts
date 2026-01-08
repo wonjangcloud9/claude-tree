@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { join } from 'node:path';
 import { access, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { Mutex } from 'async-mutex';
 import { GitHubAdapter, SlackNotifier } from '@claudetree/core';
 import type { Issue } from '@claudetree/shared';
 
@@ -60,13 +61,65 @@ async function startSession(
 
     const proc = spawn('claudetree', args, {
       cwd: options.cwd,
-      stdio: 'inherit',
+      stdio: 'pipe',
       detached: true,
     });
 
-    proc.unref();
-    setTimeout(() => resolve(), 1000);
-    proc.on('error', reject);
+    let started = false;
+    let output = '';
+    let checkInterval: NodeJS.Timeout | null = null;
+    let timeout: NodeJS.Timeout | null = null;
+
+    const cleanup = () => {
+      if (checkInterval) clearInterval(checkInterval);
+      if (timeout) clearTimeout(timeout);
+    };
+
+    proc.stdout?.on('data', (data) => {
+      output += data.toString();
+      if (
+        output.includes('Session started') ||
+        output.includes('Starting Claude') ||
+        output.includes('Created worktree')
+      ) {
+        started = true;
+      }
+    });
+
+    proc.stderr?.on('data', (data) => {
+      output += data.toString();
+    });
+
+    checkInterval = setInterval(() => {
+      if (started) {
+        cleanup();
+        proc.unref();
+        resolve();
+      }
+    }, 500);
+
+    timeout = setTimeout(() => {
+      cleanup();
+      if (started) {
+        proc.unref();
+        resolve();
+      } else {
+        proc.kill();
+        reject(new Error(`Session failed to start within 30s: ${output.slice(0, 200)}`));
+      }
+    }, 30000);
+
+    proc.on('error', (err) => {
+      cleanup();
+      reject(err);
+    });
+
+    proc.on('exit', (code) => {
+      if (code !== 0 && !started) {
+        cleanup();
+        reject(new Error(`Process exited with code ${code}: ${output.slice(0, 200)}`));
+      }
+    });
   });
 }
 
@@ -290,57 +343,137 @@ export const bustercallCommand = new Command('bustercall')
       status: 'pending',
     }));
 
+    // Shared state with mutex protection
+    const mutex = new Mutex();
     let runningCount = 0;
     let currentIndex = 0;
+    let conflictingRunning = false;
 
     // Track which issues are "safe" for parallel execution
     const safeIssueNumbers = new Set(safe.map(i => i.number));
+    const conflictingIssueNumbers = new Set(conflicting.map(i => i.number));
 
-    const startNext = async () => {
-      while (currentIndex < items.length) {
-        const item = items[currentIndex];
-        if (!item) break;
-
-        const isSafe = safeIssueNumbers.has(item.issue.number);
-        const currentParallelLimit = (isSafe && !options.sequential) ? effectiveParallel : 1;
-
-        // Wait if we're at the parallel limit
-        if (runningCount >= currentParallelLimit) {
-          break;
+    // Helper to safely update item status
+    const updateItemStatus = async (
+      index: number,
+      status: BustercallItem['status'],
+      error?: string
+    ) => {
+      const release = await mutex.acquire();
+      try {
+        const item = items[index];
+        if (item) {
+          item.status = status;
+          if (error) item.error = error;
         }
-
-        currentIndex++;
-        runningCount++;
-        item.status = 'running';
         printStatus(items);
-
-        try {
-          await startSession(item.issue.number, {
-            template: options.template,
-            cwd,
-          });
-          item.status = 'completed';
-        } catch (err) {
-          item.status = 'failed';
-          item.error = err instanceof Error ? err.message : 'Unknown error';
-        }
-
-        runningCount--;
-        printStatus(items);
-
-        // Continue to next item
-        await startNext();
+      } finally {
+        release();
       }
     };
 
-    // Start initial batch (respecting parallel limits)
+    const processItem = async (itemIndex: number, isConflicting: boolean) => {
+      const item = items[itemIndex];
+      if (!item) return;
+
+      await updateItemStatus(itemIndex, 'running');
+
+      try {
+        await startSession(item.issue.number, {
+          template: options.template,
+          cwd,
+        });
+        await updateItemStatus(itemIndex, 'completed');
+      } catch (err) {
+        await updateItemStatus(itemIndex, 'failed', err instanceof Error ? err.message : 'Unknown error');
+      }
+
+      // Decrement counters with mutex
+      const release = await mutex.acquire();
+      try {
+        runningCount--;
+        if (isConflicting) {
+          conflictingRunning = false;
+        }
+      } finally {
+        release();
+      }
+    };
+
+    const startNext = async (): Promise<void> => {
+      while (true) {
+        // Acquire mutex to safely check and update shared state
+        const release = await mutex.acquire();
+
+        let itemIndex: number | null = null;
+        let isConflicting = false;
+
+        try {
+          if (currentIndex >= items.length) {
+            return; // No more items
+          }
+
+          const item = items[currentIndex];
+          if (!item) {
+            return;
+          }
+
+          const isSafe = safeIssueNumbers.has(item.issue.number);
+          isConflicting = conflictingIssueNumbers.has(item.issue.number);
+          const currentParallelLimit = (isSafe && !options.sequential) ? effectiveParallel : 1;
+
+          // For conflicting issues, ensure only one runs at a time
+          if (isConflicting && conflictingRunning) {
+            return; // Wait for current conflicting issue to finish
+          }
+
+          // Check parallel limit
+          if (runningCount >= currentParallelLimit) {
+            return; // At capacity
+          }
+
+          // Reserve this item
+          itemIndex = currentIndex;
+          currentIndex++;
+          runningCount++;
+          if (isConflicting) {
+            conflictingRunning = true;
+          }
+        } finally {
+          release();
+        }
+
+        if (itemIndex !== null) {
+          // Process item outside mutex (long-running operation)
+          await processItem(itemIndex, isConflicting);
+
+          // Try to start next item
+          await startNext();
+        }
+      }
+    };
+
+    // Calculate proper initial batch size
+    let initialBatch: number;
+    if (options.sequential) {
+      initialBatch = 1;
+    } else if (safe.length > 0) {
+      initialBatch = Math.min(effectiveParallel, safe.length);
+    } else if (conflicting.length > 0) {
+      initialBatch = 1; // Conflicting issues run one at a time
+    } else {
+      initialBatch = 0;
+    }
+
+    // Start initial batch
     const promises: Promise<void>[] = [];
-    const initialBatch = Math.min(effectiveParallel, safe.length || 1);
     for (let i = 0; i < initialBatch && i < items.length; i++) {
       promises.push(startNext());
     }
 
-    await Promise.all(promises);
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
 
     // Final status
     console.log('\n=== Bustercall Complete ===');

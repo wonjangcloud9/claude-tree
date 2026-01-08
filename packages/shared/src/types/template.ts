@@ -4,7 +4,7 @@ export interface SessionTemplate {
   promptPrefix?: string;
   promptSuffix?: string;
   systemPrompt?: string;
-  skill?: 'tdd' | 'review';
+  skill?: 'tdd' | 'review' | 'docs';
   allowedTools?: string[];
 }
 

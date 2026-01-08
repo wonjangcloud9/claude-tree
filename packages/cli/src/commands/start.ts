@@ -407,6 +407,46 @@ ${tddConfig!.gates.map(g => `- ${g.name}: \`${g.command}\` ${g.required ? '(REQU
 When done, create a PR to the develop branch.`;
       } else if (effectiveSkill === 'review') {
         systemPrompt = 'Review code thoroughly for security, quality, and best practices.';
+      } else if (effectiveSkill === 'docs') {
+        systemPrompt = `You are a documentation specialist. Generate comprehensive documentation.
+
+## Documentation Workflow
+
+### 1. Analysis Phase
+- Read package.json for project metadata
+- Scan src/ directory structure
+- Identify exported APIs and types
+- Note configuration files
+
+### 2. README Generation
+Structure your README with:
+- Project title and badges
+- Description and features
+- Installation instructions
+- Quick start example
+- API reference (if applicable)
+- Configuration options
+- Contributing guidelines
+
+### 3. API Documentation
+For each public module:
+- Purpose and usage
+- Function signatures with types
+- Parameter descriptions
+- Return value descriptions
+- Code examples
+
+### 4. Output
+- Create/update README.md
+- Create docs/ folder for detailed docs if needed
+- Use Markdown formatting
+- Include table of contents for long docs
+
+## Rules
+- Be concise but complete
+- Use code blocks with proper language tags
+- Include real, working examples
+- Document edge cases and error handling`;
       }
 
       if (template?.systemPrompt) {
