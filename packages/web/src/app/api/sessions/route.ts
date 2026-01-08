@@ -10,6 +10,11 @@ import {
   saveSessions,
   extractIssueNumber,
 } from '@/lib/session-utils';
+import { createApiErrorHandler } from '@/lib/api-error';
+
+const handleError = createApiErrorHandler('GET /api/sessions', {
+  fallbackResponse: [],
+});
 
 export async function GET() {
   try {
@@ -65,7 +70,7 @@ export async function GET() {
     }
 
     return NextResponse.json(sessions);
-  } catch {
-    return NextResponse.json([]);
+  } catch (error) {
+    return handleError(error);
   }
 }

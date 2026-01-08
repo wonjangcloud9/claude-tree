@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SerializedToolApproval } from '@claudetree/shared';
+import { createApiErrorHandler, isExpectedError } from '@/lib/api-error';
 
 const CONFIG_DIR = '.claudetree';
 const APPROVALS_DIR = 'approvals';
@@ -9,6 +10,10 @@ const APPROVALS_DIR = 'approvals';
 interface Params {
   params: Promise<{ id: string; approvalId: string }>;
 }
+
+const handleError = createApiErrorHandler('PATCH /api/sessions/[id]/approvals/[approvalId]', {
+  defaultMessage: 'Failed to update approval',
+});
 
 export async function PATCH(request: Request, { params }: Params) {
   try {
@@ -26,11 +31,14 @@ export async function PATCH(request: Request, { params }: Params) {
     try {
       const content = await readFile(approvalsPath, 'utf-8');
       approvals = JSON.parse(content);
-    } catch {
-      return NextResponse.json(
-        { error: 'Approvals file not found' },
-        { status: 404 }
-      );
+    } catch (error) {
+      if (isExpectedError(error)) {
+        return NextResponse.json(
+          { error: 'Approvals file not found' },
+          { status: 404 }
+        );
+      }
+      throw error;
     }
 
     const index = approvals.findIndex((a) => a.id === approvalId);
@@ -51,10 +59,7 @@ export async function PATCH(request: Request, { params }: Params) {
     await writeFile(approvalsPath, JSON.stringify(approvals, null, 2));
 
     return NextResponse.json({ success: true, approval });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update approval' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleError(error);
   }
 }

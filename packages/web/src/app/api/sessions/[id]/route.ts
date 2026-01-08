@@ -12,12 +12,17 @@ import {
   addToDeletedList,
   CONFIG_DIR,
 } from '@/lib/session-utils';
+import { createApiErrorHandler, logApiError } from '@/lib/api-error';
 
 const execAsync = promisify(exec);
 
 interface Params {
   params: Promise<{ id: string }>;
 }
+
+const handleGetError = createApiErrorHandler('GET /api/sessions/[id]', {
+  defaultMessage: 'Failed to read session',
+});
 
 export async function GET(_request: Request, { params }: Params) {
   try {
@@ -33,10 +38,14 @@ export async function GET(_request: Request, { params }: Params) {
     }
 
     return NextResponse.json(session);
-  } catch {
-    return NextResponse.json({ error: 'Failed to read session' }, { status: 500 });
+  } catch (error) {
+    return handleGetError(error);
   }
 }
+
+const handleDeleteError = createApiErrorHandler('DELETE /api/sessions/[id]', {
+  defaultMessage: 'Failed to delete session',
+});
 
 export async function DELETE(_request: Request, { params }: Params) {
   try {
@@ -71,23 +80,26 @@ export async function DELETE(_request: Request, { params }: Params) {
           { cwd }
         );
         branchName = stdout.trim();
-      } catch {
-        // Worktree might not exist
+      } catch (error) {
+        // Worktree might not exist - log for debugging if unexpected
+        logApiError('DELETE /api/sessions/[id] - get branch', error, { sessionId: id, worktreeId: session.worktreeId });
       }
 
       // Remove worktree
       try {
         await execAsync(`git worktree remove "${session.worktreeId}" --force`, { cwd });
-      } catch {
-        // Worktree might not exist or already removed
+      } catch (error) {
+        // Worktree might not exist or already removed - log for debugging
+        logApiError('DELETE /api/sessions/[id] - remove worktree', error, { sessionId: id, worktreeId: session.worktreeId });
       }
 
       // Delete branch after worktree is removed
       if (branchName && branchName !== 'main' && branchName !== 'develop' && branchName !== 'master') {
         try {
           await execAsync(`git branch -D "${branchName}"`, { cwd });
-        } catch {
-          // Branch might not exist or already deleted
+        } catch (error) {
+          // Branch might not exist or already deleted - log for debugging
+          logApiError('DELETE /api/sessions/[id] - delete branch', error, { sessionId: id, branchName });
         }
       }
 
@@ -110,12 +122,12 @@ export async function DELETE(_request: Request, { params }: Params) {
       try {
         await rm(file);
       } catch {
-        // Ignore if file doesn't exist
+        // Expected: file doesn't exist - no need to log
       }
     }
 
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: 'Failed to delete session' }, { status: 500 });
+  } catch (error) {
+    return handleDeleteError(error);
   }
 }

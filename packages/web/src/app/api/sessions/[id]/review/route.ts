@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SerializedCodeReview } from '@claudetree/shared';
+import { createApiErrorHandler, isExpectedError } from '@/lib/api-error';
 
 const CONFIG_DIR = '.claudetree';
 const REVIEWS_DIR = 'reviews';
@@ -9,6 +10,14 @@ const REVIEWS_DIR = 'reviews';
 interface Params {
   params: Promise<{ id: string }>;
 }
+
+const handleGetError = createApiErrorHandler('GET /api/sessions/[id]/review', {
+  defaultMessage: 'Failed to read review',
+});
+
+const handlePatchError = createApiErrorHandler('PATCH /api/sessions/[id]/review', {
+  defaultMessage: 'Failed to update review',
+});
 
 export async function GET(_request: Request, { params }: Params) {
   try {
@@ -20,14 +29,15 @@ export async function GET(_request: Request, { params }: Params) {
       const content = await readFile(reviewPath, 'utf-8');
       const review = JSON.parse(content) as SerializedCodeReview;
       return NextResponse.json(review);
-    } catch {
-      return NextResponse.json(null);
+    } catch (error) {
+      // No review file yet - expected for new sessions
+      if (isExpectedError(error)) {
+        return NextResponse.json(null);
+      }
+      throw error;
     }
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to read review' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleGetError(error);
   }
 }
 
@@ -47,11 +57,14 @@ export async function PATCH(request: Request, { params }: Params) {
     try {
       const content = await readFile(reviewPath, 'utf-8');
       review = JSON.parse(content);
-    } catch {
-      return NextResponse.json(
-        { error: 'Review not found' },
-        { status: 404 }
-      );
+    } catch (error) {
+      if (isExpectedError(error)) {
+        return NextResponse.json(
+          { error: 'Review not found' },
+          { status: 404 }
+        );
+      }
+      throw error;
     }
 
     review.status = status;
@@ -61,10 +74,7 @@ export async function PATCH(request: Request, { params }: Params) {
     await writeFile(reviewPath, JSON.stringify(review, null, 2));
 
     return NextResponse.json({ success: true, review });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update review' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handlePatchError(error);
   }
 }
