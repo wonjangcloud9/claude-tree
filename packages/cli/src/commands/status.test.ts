@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -48,7 +48,7 @@ describe('statusCommand', () => {
     it('should display error and exit with code 1', async () => {
       // Mock process.exit to throw to stop execution
       const exitError = new Error('process.exit called');
-      (process.exit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      (process.exit as unknown as Mock).mockImplementation(() => {
         throw exitError;
       });
 
@@ -135,6 +135,8 @@ describe('statusCommand', () => {
           usage: {
             inputTokens: 1000,
             outputTokens: 500,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
             totalCostUsd: 0.0234,
           },
         });
@@ -178,6 +180,8 @@ describe('statusCommand', () => {
             usage: {
               inputTokens: 1000,
               outputTokens: 500,
+              cacheReadInputTokens: 0,
+              cacheCreationInputTokens: 0,
               totalCostUsd: 0.02,
             },
           }),
@@ -186,6 +190,8 @@ describe('statusCommand', () => {
             usage: {
               inputTokens: 2000,
               outputTokens: 1000,
+              cacheReadInputTokens: 0,
+              cacheCreationInputTokens: 0,
               totalCostUsd: 0.04,
             },
           }),

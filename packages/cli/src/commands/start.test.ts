@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -116,7 +116,7 @@ describe('startCommand', () => {
   describe('when not initialized', () => {
     it('should display error and exit with code 1', async () => {
       const exitError = new Error('process.exit called');
-      (process.exit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      (process.exit as unknown as Mock).mockImplementation(() => {
         throw exitError;
       });
 
@@ -318,7 +318,7 @@ describe('startCommand', () => {
       it('should handle worktree creation error', async () => {
         mockWorktreeCreate.mockRejectedValue(new Error('Git error'));
         const exitError = new Error('process.exit called');
-        (process.exit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        (process.exit as unknown as Mock).mockImplementation(() => {
           throw exitError;
         });
 

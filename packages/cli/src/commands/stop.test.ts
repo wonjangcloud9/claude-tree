@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -69,7 +69,7 @@ describe('stopCommand', () => {
   describe('when not initialized', () => {
     it('should display error and exit with code 1', async () => {
       const exitError = new Error('process.exit called');
-      (process.exit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      (process.exit as unknown as Mock).mockImplementation(() => {
         throw exitError;
       });
 
@@ -125,7 +125,7 @@ describe('stopCommand', () => {
         const session = createMockSession({ id: 'test-session-abc123' });
         mockFindAll.mockResolvedValue([session]);
         const exitError = new Error('process.exit called');
-        (process.exit as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        (process.exit as unknown as Mock).mockImplementation(() => {
           throw exitError;
         });
 
