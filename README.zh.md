@@ -138,6 +138,8 @@ ct web       # Web仪表板 http://localhost:3000
 | `ct web` | 启动Web仪表板 |
 | `ct doctor` | 检查环境设置（Claude CLI、Git、GitHub） |
 | `ct demo` | 功能探索的交互式演示 |
+| `ct bustercall` | 并行批量处理多个问题 |
+| `ct chain` | 按依赖链顺序执行问题 |
 
 ### Start选项
 
@@ -254,6 +256,81 @@ ct start 42 --template feature    # 功能实现
 ct start 42 --template refactor   # 代码重构
 ct start 42 --template review     # 代码审查
 ```
+
+## Bustercall批量处理
+
+用单个命令并行处理多个GitHub问题：
+
+```bash
+# 处理带'bug'标签的问题（3个并行会话）
+ct bustercall --label bug --parallel 3
+
+# 处理高优先级问题
+ct bustercall --label high-priority --parallel 5
+
+# 每个会话的预算限制
+ct bustercall --label feature --parallel 3 --max-cost 0.50
+```
+
+### Bustercall选项
+
+| 选项 | 描述 |
+|------|------|
+| `--label <label>` | 按GitHub标签筛选问题 |
+| `--parallel <n>` | 并行会话数（默认：3） |
+| `--max-cost <usd>` | 每个会话的预算上限 |
+| `--dry-run` | 预览问题而不启动会话 |
+
+### 功能
+
+- **冲突检测**: 自动检测修改相同文件的问题，顺序执行
+- **PR过滤**: 跳过已有开放PR的问题
+- **进度跟踪**: 所有会话的实时状态更新
+- **优雅处理**: 即使部分会话失败也继续处理
+
+## 依赖链 (NEW)
+
+将多个问题链接在一起，每个问题基于前一个分支执行：
+
+```bash
+# 顺序执行问题 10 → 11 → 12
+# 问题11从issue-10分支开始，问题12从issue-11分支开始
+ct chain 10 11 12
+
+# 预览链计划
+ct chain 10 11 12 --dry-run
+
+# 为所有问题应用模板
+ct chain 10 11 12 --template feature
+
+# 失败时继续
+ct chain 10 11 12 --skip-failed
+```
+
+### 工作原理
+
+```
+Issue #10 (base: develop)
+    ↓ 完成
+Issue #11 (base: issue-10)
+    ↓ 完成
+Issue #12 (base: issue-11)
+    ↓ 完成
+```
+
+使用场景：
+- **顺序功能**: 数据库架构 → API → UI更改
+- **依赖修复**: 核心修复 → 相关修复
+- **渐进式重构**: 逐步改进工作
+
+### Chain选项
+
+| 选项 | 描述 |
+|------|------|
+| `--template <template>` | 应用于所有问题的会话模板 |
+| `--skip-failed` | 问题失败时继续链 |
+| `--base-branch <branch>` | 第一个问题的基础分支（默认：develop） |
+| `--dry-run` | 不执行，预览链计划 |
 
 ## 架构
 

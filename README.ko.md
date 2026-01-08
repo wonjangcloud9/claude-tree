@@ -138,6 +138,8 @@ ct web       # 웹 대시보드 http://localhost:3000
 | `ct web` | 웹 대시보드 시작 |
 | `ct doctor` | 환경 설정 확인 (Claude CLI, Git, GitHub) |
 | `ct demo` | 기능 탐색용 인터랙티브 데모 |
+| `ct bustercall` | 여러 이슈를 병렬로 일괄 처리 |
+| `ct chain` | 의존성 체인으로 이슈 순차 실행 |
 
 ### Start 옵션
 
@@ -254,6 +256,81 @@ ct start 42 --template feature    # 기능 구현
 ct start 42 --template refactor   # 코드 리팩토링
 ct start 42 --template review     # 코드 리뷰
 ```
+
+## Bustercall로 일괄 처리
+
+단일 명령으로 여러 GitHub 이슈를 병렬 처리:
+
+```bash
+# 'bug' 라벨 이슈 처리 (3개 병렬 세션)
+ct bustercall --label bug --parallel 3
+
+# 고우선순위 이슈 처리
+ct bustercall --label high-priority --parallel 5
+
+# 세션별 예산 제한
+ct bustercall --label feature --parallel 3 --max-cost 0.50
+```
+
+### Bustercall 옵션
+
+| 옵션 | 설명 |
+|------|------|
+| `--label <label>` | GitHub 라벨로 이슈 필터링 |
+| `--parallel <n>` | 병렬 세션 수 (기본값: 3) |
+| `--max-cost <usd>` | 세션별 예산 한도 |
+| `--dry-run` | 세션 시작 없이 이슈 미리보기 |
+
+### 기능
+
+- **충돌 감지**: 같은 파일을 수정하는 이슈 자동 감지, 순차 실행
+- **PR 필터링**: 이미 열린 PR이 있는 이슈 건너뛰기
+- **진행상황 추적**: 모든 세션의 실시간 상태 업데이트
+- **우아한 처리**: 일부 세션 실패해도 계속 처리
+
+## 의존성 체인 (NEW)
+
+여러 이슈를 연결하여 이전 브랜치를 기반으로 다음 이슈 실행:
+
+```bash
+# 이슈 10 → 11 → 12 순차 실행
+# 이슈 11은 issue-10 브랜치에서, 이슈 12는 issue-11 브랜치에서 시작
+ct chain 10 11 12
+
+# 체인 계획 미리보기
+ct chain 10 11 12 --dry-run
+
+# 모든 이슈에 템플릿 적용
+ct chain 10 11 12 --template feature
+
+# 실패해도 계속 진행
+ct chain 10 11 12 --skip-failed
+```
+
+### 동작 방식
+
+```
+Issue #10 (base: develop)
+    ↓ 완료
+Issue #11 (base: issue-10)
+    ↓ 완료
+Issue #12 (base: issue-11)
+    ↓ 완료
+```
+
+활용 사례:
+- **순차적 기능**: DB 스키마 → API → UI 변경
+- **의존성 있는 수정**: 코어 수정 → 관련 수정
+- **점진적 리팩토링**: 단계별 개선 작업
+
+### Chain 옵션
+
+| 옵션 | 설명 |
+|------|------|
+| `--template <template>` | 모든 이슈에 적용할 세션 템플릿 |
+| `--skip-failed` | 이슈 실패해도 체인 계속 진행 |
+| `--base-branch <branch>` | 첫 이슈의 베이스 브랜치 (기본값: develop) |
+| `--dry-run` | 실행 없이 체인 계획 미리보기 |
 
 ## 아키텍처
 

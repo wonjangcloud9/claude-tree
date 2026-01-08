@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/web",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "private": true,
   "description": "Web dashboard for claudetree",
   "scripts": {

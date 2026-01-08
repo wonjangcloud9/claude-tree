@@ -36,7 +36,13 @@ export class GitWorktreeAdapter implements IWorktreeRepository {
       // Branch doesn't exist, continue
     }
 
-    await execa('git', ['worktree', 'add', '-b', input.branch, input.path], {
+    // Build worktree add command with optional base branch
+    const args = ['worktree', 'add', '-b', input.branch, input.path];
+    if (input.baseBranch) {
+      args.push(input.baseBranch);
+    }
+
+    await execa('git', args, {
       cwd: this.repoPath,
     });
 

@@ -7,3 +7,4 @@ export * from './code-review.js';
 export * from './template.js';
 export * from './tdd.js';
 export * from './statistics.js';
+export * from './chain.js';

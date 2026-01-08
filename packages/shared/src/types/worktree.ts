@@ -11,6 +11,7 @@ export interface CreateWorktreeInput {
   path: string;
   branch: string;
   issueNumber?: number;
+  baseBranch?: string;
 }
 
 export interface WorktreeListItem {

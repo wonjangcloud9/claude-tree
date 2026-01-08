@@ -139,6 +139,7 @@ ct web       # Web dashboard at http://localhost:3000
 | `ct doctor` | Check environment setup (Claude CLI, Git, GitHub) |
 | `ct demo` | Interactive demo to explore features |
 | `ct bustercall` | Batch process multiple issues in parallel |
+| `ct chain` | Execute dependency chain of issues sequentially |
 
 ### Start Options
 
@@ -290,6 +291,50 @@ ct bustercall --label feature --parallel 3 --max-cost 0.50
 - **PR Filtering**: Skips issues that already have open PRs
 - **Progress Tracking**: Real-time status updates for all sessions
 - **Graceful Handling**: Continues processing even if some sessions fail
+
+## Dependency Chain (NEW)
+
+Chain multiple issues together where each builds on the previous one's branch:
+
+```bash
+# Execute issues 10 → 11 → 12 sequentially
+# Issue 11 starts from issue-10 branch, issue 12 starts from issue-11 branch
+ct chain 10 11 12
+
+# Preview the chain plan
+ct chain 10 11 12 --dry-run
+
+# Use a template for all issues
+ct chain 10 11 12 --template feature
+
+# Continue even if one fails
+ct chain 10 11 12 --skip-failed
+```
+
+### How It Works
+
+```
+Issue #10 (base: develop)
+    ↓ completed
+Issue #11 (base: issue-10)
+    ↓ completed
+Issue #12 (base: issue-11)
+    ↓ completed
+```
+
+This is useful for:
+- **Sequential features**: DB schema → API → UI changes
+- **Dependent fixes**: Core fix → related fixes that depend on it
+- **Progressive refactoring**: Step-by-step improvements that build on each other
+
+### Chain Options
+
+| Option | Description |
+|--------|-------------|
+| `--template <template>` | Session template for all issues |
+| `--skip-failed` | Continue chain even if an issue fails |
+| `--base-branch <branch>` | Base branch for first issue (default: develop) |
+| `--dry-run` | Preview chain plan without executing |
 
 ## Session Templates
 

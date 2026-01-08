@@ -138,6 +138,8 @@ ct web       # Webダッシュボード http://localhost:3000
 | `ct web` | Webダッシュボード開始 |
 | `ct doctor` | 環境設定確認（Claude CLI、Git、GitHub） |
 | `ct demo` | 機能探索用インタラクティブデモ |
+| `ct bustercall` | 複数の課題を並列でバッチ処理 |
+| `ct chain` | 依存関係チェーンで課題を順次実行 |
 
 ### Startオプション
 
@@ -254,6 +256,81 @@ ct start 42 --template feature    # 機能実装
 ct start 42 --template refactor   # コードリファクタリング
 ct start 42 --template review     # コードレビュー
 ```
+
+## Bustercallでバッチ処理
+
+単一コマンドで複数のGitHub課題を並列処理:
+
+```bash
+# 'bug'ラベルの課題を処理（3並列セッション）
+ct bustercall --label bug --parallel 3
+
+# 高優先度の課題を処理
+ct bustercall --label high-priority --parallel 5
+
+# セッションごとの予算制限
+ct bustercall --label feature --parallel 3 --max-cost 0.50
+```
+
+### Bustercallオプション
+
+| オプション | 説明 |
+|------------|------|
+| `--label <label>` | GitHubラベルで課題をフィルタリング |
+| `--parallel <n>` | 並列セッション数（デフォルト: 3） |
+| `--max-cost <usd>` | セッションごとの予算上限 |
+| `--dry-run` | セッション開始せずに課題プレビュー |
+
+### 機能
+
+- **競合検出**: 同じファイルを変更する課題を自動検出、順次実行
+- **PRフィルタリング**: 既にオープンPRがある課題をスキップ
+- **進捗追跡**: すべてのセッションのリアルタイム状態更新
+- **優雅な処理**: 一部のセッションが失敗しても処理を継続
+
+## 依存関係チェーン (NEW)
+
+複数の課題を連結して、前のブランチを基に次の課題を実行:
+
+```bash
+# 課題 10 → 11 → 12 を順次実行
+# 課題11はissue-10ブランチから、課題12はissue-11ブランチから開始
+ct chain 10 11 12
+
+# チェーン計画をプレビュー
+ct chain 10 11 12 --dry-run
+
+# すべての課題にテンプレートを適用
+ct chain 10 11 12 --template feature
+
+# 失敗しても続行
+ct chain 10 11 12 --skip-failed
+```
+
+### 動作原理
+
+```
+Issue #10 (base: develop)
+    ↓ 完了
+Issue #11 (base: issue-10)
+    ↓ 完了
+Issue #12 (base: issue-11)
+    ↓ 完了
+```
+
+ユースケース:
+- **順次機能**: DBスキーマ → API → UI変更
+- **依存性のある修正**: コア修正 → 関連修正
+- **段階的リファクタリング**: ステップバイステップの改善作業
+
+### Chainオプション
+
+| オプション | 説明 |
+|------------|------|
+| `--template <template>` | すべての課題に適用するセッションテンプレート |
+| `--skip-failed` | 課題が失敗してもチェーンを継続 |
+| `--base-branch <branch>` | 最初の課題のベースブランチ（デフォルト: develop） |
+| `--dry-run` | 実行せずにチェーン計画をプレビュー |
 
 ## アーキテクチャ
 

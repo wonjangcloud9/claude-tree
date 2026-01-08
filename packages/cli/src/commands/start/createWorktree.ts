@@ -13,6 +13,7 @@ export interface CreateWorktreeOptions {
   worktreeDir: string;
   branchName: string;
   issueNumber?: number;
+  baseBranch?: string;
 }
 
 export interface CreateWorktreeResult {
@@ -26,7 +27,7 @@ export interface CreateWorktreeResult {
 export async function createOrFindWorktree(
   options: CreateWorktreeOptions
 ): Promise<CreateWorktreeResult> {
-  const { cwd, worktreeDir, branchName, issueNumber } = options;
+  const { cwd, worktreeDir, branchName, issueNumber, baseBranch } = options;
 
   const worktreePath = join(cwd, worktreeDir, branchName);
   const gitAdapter = new GitWorktreeAdapter(cwd);
@@ -48,11 +49,12 @@ export async function createOrFindWorktree(
     };
   }
 
-  // Create new worktree
+  // Create new worktree with optional base branch
   const worktree = await gitAdapter.create({
     path: worktreePath,
     branch: branchName,
     issueNumber,
+    baseBranch,
   });
 
   return {

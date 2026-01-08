@@ -245,6 +245,8 @@ export const startCommand = new Command('start')
     const { issueNumber, issueData, branchName, taskDescription } = parsedInput;
 
     // Create or find worktree using extracted module
+    // Support base branch from environment variable (used by chain command)
+    const baseBranch = process.env.CLAUDETREE_BASE_BRANCH;
     let worktreeResult;
     try {
       worktreeResult = await createOrFindWorktree({
@@ -252,6 +254,7 @@ export const startCommand = new Command('start')
         worktreeDir: config.worktreeDir,
         branchName,
         issueNumber: issueNumber ?? undefined,
+        baseBranch,
       });
 
       if (worktreeResult.isExisting) {
