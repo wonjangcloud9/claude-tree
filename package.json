@@ -1,6 +1,7 @@
 {
   "name": "claudetree",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "description": "Git Worktree-based Claude Code multi-session manager",
   "repository": {
@@ -15,7 +16,7 @@
     "test": "pnpm -r test:run",
     "test:run": "pnpm -r test:run",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint packages/*/src --ext .ts,.tsx",
+    "lint": "eslint 'packages/*/src/**/*.ts' 'packages/*/src/**/*.tsx'",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf packages/*/dist",
     "changeset": "changeset",
@@ -24,11 +25,13 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
+    "@eslint/js": "^9.39.2",
     "@types/node": "^22.10.0",
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "^3.0.0",
     "eslint": "^9.17.0",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.52.0",
     "vitest": "^3.0.0"
   },
   "packageManager": "pnpm@9.15.0",
