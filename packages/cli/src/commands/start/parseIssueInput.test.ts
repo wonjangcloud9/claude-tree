@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseIssueInput, type ParsedIssueInput } from './parseIssueInput.js';
+import { parseIssueInput } from './parseIssueInput.js';
 import { GitHubAdapter } from '@claudetree/core';
 
 // Mock GitHubAdapter
@@ -101,7 +101,9 @@ describe('parseIssueInput', () => {
         generateBranchName: vi.fn(),
         createPR: vi.fn(),
         getDefaultBranch: vi.fn(),
-      }));
+        listIssues: vi.fn(),
+        octokit: {},
+      } as unknown as GitHubAdapter));
 
       const result = await parseIssueInput('42', {
         token: 'fake-token',

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createOrFindWorktree } from './createWorktree.js';
+import { GitWorktreeAdapter } from '@claudetree/core';
 
 // Mock GitWorktreeAdapter
 vi.mock('@claudetree/core', async () => {
@@ -76,11 +77,10 @@ describe('createOrFindWorktree', () => {
 
   describe('error handling', () => {
     it('should throw error when create fails', async () => {
-      const { GitWorktreeAdapter } = await import('@claudetree/core');
       vi.mocked(GitWorktreeAdapter).mockImplementationOnce(() => ({
         list: vi.fn().mockResolvedValue([]),
         create: vi.fn().mockRejectedValue(new Error('Git error: branch already exists')),
-      }));
+      } as unknown as GitWorktreeAdapter));
 
       await expect(
         createOrFindWorktree({
