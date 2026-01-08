@@ -56,7 +56,7 @@ export const stopCommand = new Command('stop')
         try {
           // Note: We'd need to store the actual worktree path
           console.log(`  Session stopped. Worktree kept (use --keep-worktree=false to remove).`);
-        } catch (error) {
+        } catch {
           console.log(`  Warning: Could not remove worktree.`);
         }
       }

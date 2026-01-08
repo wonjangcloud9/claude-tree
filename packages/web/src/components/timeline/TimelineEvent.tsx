@@ -53,7 +53,7 @@ const EVENT_CONFIG: Record<EventType, {
   },
 };
 
-export function TimelineEvent({ event, isFirst, isLast }: TimelineEventProps) {
+export function TimelineEvent({ event, isFirst: _isFirst, isLast: _isLast }: TimelineEventProps) {
   const locale = useLocale() as Locale;
   const config = EVENT_CONFIG[event.type];
   const d = typeof event.timestamp === 'string' ? new Date(event.timestamp) : event.timestamp;

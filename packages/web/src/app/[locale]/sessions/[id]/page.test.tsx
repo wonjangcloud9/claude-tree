@@ -74,6 +74,7 @@ class MockWebSocket {
   onmessage: ((event: MessageEvent) => void) | null = null;
 
   constructor(public url: string) {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     mockWebSocketInstance = this;
     setTimeout(() => {
       this.readyState = MockWebSocket.OPEN;
