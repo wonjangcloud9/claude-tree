@@ -138,6 +138,7 @@ ct web       # Web dashboard at http://localhost:3000
 | `ct web` | Start web dashboard |
 | `ct doctor` | Check environment setup (Claude CLI, Git, GitHub) |
 | `ct demo` | Interactive demo to explore features |
+| `ct bustercall` | Batch process multiple issues in parallel |
 
 ### Start Options
 
@@ -227,6 +228,21 @@ ct web    # http://localhost:3000
 - Auto-refresh on session state changes
 - Live streaming of Claude output
 
+### Statistics Dashboard (NEW)
+
+Access session analytics at `/stats`:
+
+```bash
+ct web    # Go to http://localhost:3000/stats
+```
+
+**Available Metrics:**
+- Total sessions, success rate
+- Token usage (input/output)
+- Cost tracking with daily/weekly trends
+- Average session duration
+- Visual charts (line, bar)
+
 ## Built-in Skills
 
 ### TDD Workflow
@@ -244,6 +260,37 @@ ct start 42 --skill review
 ```
 Thorough code review with CRITICAL / WARNING / INFO levels
 
+## Batch Processing with Bustercall
+
+Process multiple GitHub issues in parallel with a single command:
+
+```bash
+# Process all issues with 'bug' label (3 parallel sessions)
+ct bustercall --label bug --parallel 3
+
+# Process high-priority issues
+ct bustercall --label high-priority --parallel 5
+
+# With budget limit per session
+ct bustercall --label feature --parallel 3 --max-cost 0.50
+```
+
+### Bustercall Options
+
+| Option | Description |
+|--------|-------------|
+| `--label <label>` | Filter issues by GitHub label |
+| `--parallel <n>` | Number of parallel sessions (default: 3) |
+| `--max-cost <usd>` | Budget limit per session |
+| `--dry-run` | Preview issues without starting sessions |
+
+### Features
+
+- **Conflict Detection**: Automatically detects issues that modify the same files and runs them sequentially
+- **PR Filtering**: Skips issues that already have open PRs
+- **Progress Tracking**: Real-time status updates for all sessions
+- **Graceful Handling**: Continues processing even if some sessions fail
+
 ## Session Templates
 
 Templates provide pre-configured prompts for common tasks:
@@ -253,7 +300,24 @@ ct start 42 --template bugfix     # Focus on bug fixing
 ct start 42 --template feature    # Feature implementation
 ct start 42 --template refactor   # Code refactoring
 ct start 42 --template review     # Code review
+ct start 42 --template docs       # Documentation generation
 ```
+
+### Documentation Skill (NEW)
+
+Generate comprehensive documentation automatically:
+
+```bash
+ct start 42 --skill docs
+# or
+ct start 42 --template docs
+```
+
+Claude will:
+1. Analyze codebase structure
+2. Identify public APIs and types
+3. Generate README.md with installation, usage, API reference
+4. Create docs/ folder for detailed documentation
 
 ## Architecture
 
