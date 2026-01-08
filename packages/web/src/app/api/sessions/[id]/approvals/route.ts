@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SerializedToolApproval } from '@claudetree/shared';
+import { createApiErrorHandler, isExpectedError } from '@/lib/api-error';
 
 const CONFIG_DIR = '.claudetree';
 const APPROVALS_DIR = 'approvals';
@@ -9,6 +10,10 @@ const APPROVALS_DIR = 'approvals';
 interface Params {
   params: Promise<{ id: string }>;
 }
+
+const handleError = createApiErrorHandler('GET /api/sessions/[id]/approvals', {
+  defaultMessage: 'Failed to read approvals',
+});
 
 export async function GET(_request: Request, { params }: Params) {
   try {
@@ -20,15 +25,15 @@ export async function GET(_request: Request, { params }: Params) {
     try {
       const content = await readFile(approvalsPath, 'utf-8');
       approvals = JSON.parse(content);
-    } catch {
-      // No approvals file yet
+    } catch (error) {
+      // No approvals file yet - expected for new sessions
+      if (!isExpectedError(error)) {
+        throw error;
+      }
     }
 
     return NextResponse.json(approvals);
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to read approvals' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleError(error);
   }
 }

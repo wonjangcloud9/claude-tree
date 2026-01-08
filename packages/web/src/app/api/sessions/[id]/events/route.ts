@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SerializedSessionEvent } from '@claudetree/shared';
+import { createApiErrorHandler, isExpectedError } from '@/lib/api-error';
 
 const CONFIG_DIR = '.claudetree';
 const EVENTS_DIR = 'events';
@@ -9,6 +10,10 @@ const EVENTS_DIR = 'events';
 interface Params {
   params: Promise<{ id: string }>;
 }
+
+const handleError = createApiErrorHandler('GET /api/sessions/[id]/events', {
+  defaultMessage: 'Failed to read events',
+});
 
 export async function GET(request: Request, { params }: Params) {
   try {
@@ -24,8 +29,11 @@ export async function GET(request: Request, { params }: Params) {
     try {
       const content = await readFile(eventsPath, 'utf-8');
       events = JSON.parse(content);
-    } catch {
-      // No events file yet
+    } catch (error) {
+      // No events file yet - expected for new sessions
+      if (!isExpectedError(error)) {
+        throw error;
+      }
     }
 
     const total = events.length;
@@ -36,7 +44,7 @@ export async function GET(request: Request, { params }: Params) {
       total,
       hasMore: offset + limit < total,
     });
-  } catch {
-    return NextResponse.json({ error: 'Failed to read events' }, { status: 500 });
+  } catch (error) {
+    return handleError(error);
   }
 }
