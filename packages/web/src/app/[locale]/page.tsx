@@ -25,6 +25,20 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete session');
+      }
+      // Optimistically remove from UI
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete session');
+    }
+  }, []);
+
   const wsUrl =
     typeof window !== 'undefined'
       ? `ws://${window.location.hostname}:3001`
@@ -140,7 +154,7 @@ export default function DashboardPage() {
       {isLoading ? (
         <LoadingSkeleton />
       ) : (
-        <SessionList sessions={sessions} onRefresh={fetchSessions} />
+        <SessionList sessions={sessions} onRefresh={fetchSessions} onDelete={handleDelete} />
       )}
     </main>
   );

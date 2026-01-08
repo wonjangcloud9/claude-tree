@@ -7,9 +7,10 @@ import { SessionCard } from './SessionCard';
 interface SessionListProps {
   sessions: Session[];
   onRefresh: () => void;
+  onDelete?: (id: string) => void;
 }
 
-export function SessionList({ sessions, onRefresh }: SessionListProps) {
+export function SessionList({ sessions, onRefresh, onDelete }: SessionListProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -133,7 +134,7 @@ export function SessionList({ sessions, onRefresh }: SessionListProps) {
               animationFillMode: 'both',
             }}
           >
-            <SessionCard session={session} />
+            <SessionCard session={session} onDelete={onDelete} />
           </div>
         ))}
       </div>
