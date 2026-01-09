@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -50,7 +50,7 @@ describe('cleanCommand', () => {
     process.exit = vi.fn() as never;
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true) as ReturnType<typeof vi.spyOn>;
     mockWorktreeList.mockReset();
     mockWorktreeRemove.mockReset();
     mockWorktreePrune.mockReset();

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Session } from '@claudetree/shared';
@@ -311,7 +311,7 @@ describe('resumeCommand', () => {
 
         // Check that save was called with processId and osProcessId
         expect(mockSave).toHaveBeenCalled();
-        const savedSession = mockSave.mock.calls[0][0];
+        const savedSession = mockSave.mock.calls[0]![0];
         expect(savedSession.processId).toBe('proc-1');
         expect(savedSession.osProcessId).toBe(12345);
       });
@@ -338,7 +338,7 @@ describe('resumeCommand', () => {
         await resumeCommand.parseAsync(['node', 'test', 'test-ses']);
 
         // Last save should be completed
-        const lastSaveCall = mockSave.mock.calls[mockSave.mock.calls.length - 1];
+        const lastSaveCall = mockSave.mock.calls[mockSave.mock.calls.length - 1]!;
         expect(lastSaveCall[0].status).toBe('completed');
       });
 

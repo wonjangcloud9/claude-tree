@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
-import { mkdtemp, rm, mkdir, writeFile, readFile, access } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
