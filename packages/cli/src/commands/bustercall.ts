@@ -7,6 +7,15 @@ import { Mutex } from 'async-mutex';
 import { GitHubAdapter, SlackNotifier } from '@claudetree/core';
 import type { Issue } from '@claudetree/shared';
 
+import {
+  groupIssuesByConflict,
+  DEFAULT_CONFLICT_LABELS,
+  truncate,
+  printStatus,
+  waitForSessionCreated,
+  type BustercallItem,
+} from './bustercall/index.js';
+
 const execAsync = promisify(exec);
 
 const CONFIG_DIR = '.claudetree';
@@ -35,12 +44,6 @@ interface Config {
   };
 }
 
-interface BustercallItem {
-  issue: Issue;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  error?: string;
-}
-
 async function loadConfig(cwd: string): Promise<Config | null> {
   try {
     const configPath = join(cwd, CONFIG_DIR, 'config.json');
@@ -50,39 +53,6 @@ async function loadConfig(cwd: string): Promise<Config | null> {
   } catch {
     return null;
   }
-}
-
-interface SessionInfo {
-  issueNumber?: number;
-  status?: string;
-}
-
-async function getSessionsForIssue(cwd: string, issueNumber: number): Promise<SessionInfo[]> {
-  try {
-    const sessionsPath = join(cwd, CONFIG_DIR, 'sessions.json');
-    const content = await readFile(sessionsPath, 'utf-8');
-    const sessions = JSON.parse(content) as SessionInfo[];
-    return sessions.filter((s) => s.issueNumber === issueNumber);
-  } catch {
-    return [];
-  }
-}
-
-async function waitForSessionCreated(
-  cwd: string,
-  issueNumber: number,
-  timeoutMs: number
-): Promise<boolean> {
-  const startTime = Date.now();
-  while (Date.now() - startTime < timeoutMs) {
-    const sessions = await getSessionsForIssue(cwd, issueNumber);
-    // Check if there's a running session for this issue
-    if (sessions.some((s) => s.status === 'running')) {
-      return true;
-    }
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  return false;
 }
 
 async function startSession(
@@ -111,11 +81,6 @@ async function startSession(
   if (!sessionCreated) {
     throw new Error(`Session for issue #${issueNumber} was not created within 60 seconds`);
   }
-}
-
-function truncate(str: string, maxLen: number): string {
-  if (str.length <= maxLen) return str;
-  return str.slice(0, maxLen - 3) + '...';
 }
 
 async function getIssuesWithExistingPRs(
@@ -151,89 +116,6 @@ async function getIssuesWithExistingPRs(
   } catch {
     return new Set();
   }
-}
-
-// Keywords that indicate potential conflicts with config/shared files
-const CONFLICT_KEYWORDS = [
-  'package.json', 'tsconfig', 'vitest', 'eslint', 'config',
-  'dependencies', 'devDependencies', 'workspace', 'monorepo',
-  'pnpm-lock', 'package-lock', 'yarn.lock', 'infrastructure',
-  '설정', '의존성', '패키지', // Korean
-];
-
-// Labels that typically indicate config/infra changes
-const DEFAULT_CONFLICT_LABELS = [
-  'dependencies', 'infrastructure', 'config', 'setup', 'tooling',
-  'build', 'ci', 'chore',
-];
-
-/**
- * Check if an issue might conflict with config/shared files
- */
-function detectPotentialConflict(issue: Issue, conflictLabels: string[]): boolean {
-  // Check labels
-  const hasConflictLabel = issue.labels.some(label =>
-    conflictLabels.some(cl => label.toLowerCase().includes(cl.toLowerCase()))
-  );
-
-  // Check title for conflict keywords
-  const titleLower = issue.title.toLowerCase();
-  const hasConflictKeyword = CONFLICT_KEYWORDS.some(kw =>
-    titleLower.includes(kw.toLowerCase())
-  );
-
-  return hasConflictLabel || hasConflictKeyword;
-}
-
-/**
- * Group issues by conflict potential
- */
-function groupIssuesByConflict(
-  issues: Issue[],
-  conflictLabels: string[]
-): { conflicting: Issue[]; safe: Issue[] } {
-  const conflicting: Issue[] = [];
-  const safe: Issue[] = [];
-
-  for (const issue of issues) {
-    if (detectPotentialConflict(issue, conflictLabels)) {
-      conflicting.push(issue);
-    } else {
-      safe.push(issue);
-    }
-  }
-
-  return { conflicting, safe };
-}
-
-function printStatus(items: BustercallItem[]): void {
-  console.clear();
-  console.log('\n=== Bustercall ===\n');
-
-  for (const item of items) {
-    const icon =
-      item.status === 'pending' ? '\u25CB' :
-      item.status === 'running' ? '\u25D0' :
-      item.status === 'completed' ? '\u25CF' :
-      '\u2717';
-
-    const color =
-      item.status === 'pending' ? '\x1b[90m' :
-      item.status === 'running' ? '\x1b[33m' :
-      item.status === 'completed' ? '\x1b[32m' :
-      '\x1b[31m';
-
-    const title = truncate(item.issue.title, 40);
-    const statusText = item.error ? ` [${item.error}]` : '';
-
-    console.log(`  ${color}${icon}\x1b[0m #${item.issue.number} - ${title}${statusText}`);
-  }
-
-  const completed = items.filter((i) => i.status === 'completed').length;
-  const failed = items.filter((i) => i.status === 'failed').length;
-  const running = items.filter((i) => i.status === 'running').length;
-
-  console.log(`\n[${completed}/${items.length}] completed, ${running} running, ${failed} failed`);
 }
 
 export const bustercallCommand = new Command('bustercall')
