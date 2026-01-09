@@ -32,12 +32,14 @@ async function simulateProgress(steps: string[], delayMs = 800): Promise<void> {
 }
 
 function printBox(lines: string[], color = COLORS.cyan): void {
-  const maxLen = Math.max(...lines.map((l) => l.replace(/\x1b\[[0-9;]*m/g, '').length));
+  // eslint-disable-next-line no-control-regex
+  const ANSI_REGEX = /\x1b\[[0-9;]*m/g;
+  const maxLen = Math.max(...lines.map((l) => l.replace(ANSI_REGEX, '').length));
   const border = '─'.repeat(maxLen + 2);
 
   console.log(`${color}┌${border}┐${COLORS.reset}`);
   for (const line of lines) {
-    const plainLen = line.replace(/\x1b\[[0-9;]*m/g, '').length;
+    const plainLen = line.replace(ANSI_REGEX, '').length;
     const padding = ' '.repeat(maxLen - plainLen);
     console.log(`${color}│${COLORS.reset} ${line}${padding} ${color}│${COLORS.reset}`);
   }

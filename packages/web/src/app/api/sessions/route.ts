@@ -22,7 +22,7 @@ export async function GET() {
     const sessionsPath = getSessionsPath(cwd);
 
     // Load existing sessions and deleted worktrees
-    let sessions = await loadSessions(sessionsPath);
+    const sessions = await loadSessions(sessionsPath);
     const deletedWorktrees = await loadDeletedWorktrees(cwd);
 
     // Get current worktrees

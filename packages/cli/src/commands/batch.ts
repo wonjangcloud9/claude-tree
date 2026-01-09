@@ -136,7 +136,7 @@ export const batchCommand = new Command('batch')
           .map((line) => line.trim())
           .filter((line) => line && !line.startsWith('#'));
         issues.push(...fileIssues);
-      } catch (err) {
+      } catch {
         console.error(`Error reading file: ${options.file}`);
         process.exit(1);
       }
