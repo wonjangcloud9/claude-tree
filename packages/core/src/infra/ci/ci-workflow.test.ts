@@ -129,20 +129,21 @@ describe('CI Workflow Configuration', () => {
       expect(testStep).toBeDefined();
     });
 
-    it('should run steps in correct order: install -> lint -> typecheck -> build -> test', async () => {
+    it('should run steps in correct order: install -> lint -> build -> typecheck -> test', async () => {
       const workflow = await loadWorkflow();
       const steps = workflow.jobs.test?.steps ?? [];
 
       const installIndex = steps.findIndex((s) => s.run?.includes('pnpm install'));
       const lintIndex = steps.findIndex((s) => s.run?.includes('pnpm lint'));
-      const typecheckIndex = steps.findIndex((s) => s.run?.includes('tsc'));
       const buildIndex = steps.findIndex((s) => s.run?.includes('pnpm build'));
+      const typecheckIndex = steps.findIndex((s) => s.run?.includes('tsc'));
       const testIndex = steps.findIndex((s) => s.run?.includes('pnpm test:run'));
 
+      // Build must come before typecheck so @claudetree/shared types are available
       expect(installIndex).toBeLessThan(lintIndex);
-      expect(lintIndex).toBeLessThan(typecheckIndex);
-      expect(typecheckIndex).toBeLessThan(buildIndex);
-      expect(buildIndex).toBeLessThan(testIndex);
+      expect(lintIndex).toBeLessThan(buildIndex);
+      expect(buildIndex).toBeLessThan(typecheckIndex);
+      expect(typecheckIndex).toBeLessThan(testIndex);
     });
   });
 });
