@@ -18,18 +18,22 @@ describe('AIReviewGenerator', () => {
     exitCode: number,
     options?: { shouldError?: boolean; errorMessage?: string }
   ): ChildProcess => {
-    const proc = new EventEmitter() as ChildProcess & { stdout: EventEmitter; stderr: EventEmitter };
-    proc.stdout = new EventEmitter();
-    proc.stderr = new EventEmitter();
-    proc.kill = vi.fn();
+    const stdoutEmitter = new EventEmitter();
+    const stderrEmitter = new EventEmitter();
+    const proc = new EventEmitter() as ChildProcess;
+
+    // Cast to unknown first, then to the required type
+    (proc as unknown as { stdout: EventEmitter }).stdout = stdoutEmitter;
+    (proc as unknown as { stderr: EventEmitter }).stderr = stderrEmitter;
+    proc.kill = vi.fn() as unknown as ChildProcess['kill'];
 
     // Schedule data and close events
     setTimeout(() => {
       if (options?.shouldError) {
         proc.emit('error', new Error(options.errorMessage || 'Process error'));
       } else {
-        proc.stdout.emit('data', Buffer.from(stdout));
-        proc.stderr.emit('data', Buffer.from(stderr));
+        stdoutEmitter.emit('data', Buffer.from(stdout));
+        stderrEmitter.emit('data', Buffer.from(stderr));
         proc.emit('close', exitCode);
       }
     }, 0);

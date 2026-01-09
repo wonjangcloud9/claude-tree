@@ -7,7 +7,6 @@ import {
 } from './ValidationGateRunner.js';
 import type { ValidationGate } from '@claudetree/shared';
 import * as childProcess from 'node:child_process';
-import { promisify } from 'node:util';
 
 vi.mock('node:child_process', () => ({
   exec: vi.fn(),
@@ -110,12 +109,12 @@ describe('ValidationGateRunner', () => {
 
       const result = await runner.runGate(gate, options);
 
-      expect(result.output.length).toBeLessThan(longOutput.length);
+      expect(result.output?.length).toBeLessThan(longOutput.length);
       expect(result.output).toContain('... (truncated)');
     });
 
     it('should use default timeout when not specified', async () => {
-      execMock.mockImplementation((cmd, opts, callback) => {
+      execMock.mockImplementation((_cmd, opts, callback) => {
         // Check that timeout is set
         expect((opts as { timeout?: number }).timeout).toBe(5 * 60 * 1000);
         if (typeof callback === 'function') {
