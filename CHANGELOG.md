@@ -2,7 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.4] - 2026-01-09
+## [0.4.5] - 2026-01-09
+
+### Features
+
+- **web**: Add live code streaming for real-time output
+- **core**: Add AI code review summary generation
+- **web**: Add WebSocket file watcher for real-time session updates
+- **web**: Add delete button to session cards
+
+### Tests
+
+- **cli**: Add comprehensive tests for CLI commands (init, list, start, status, stop, web, demo, bustercall)
+- **core**: Add tests for AIReviewGenerator, ValidationGateRunner, Logger
+- **core**: Add CI workflow configuration tests
+
+### Refactoring
+
+- **cli**: Split large command files into smaller modules (start, bustercall, chain)
+- **web**: Split docs page into smaller reusable components
+  - ArchitectureSection, ApiReferenceSection, CliReferenceSection
+  - ConfigurationSection, GettingStartedSection, SessionTemplatesSection
+  - AdvancedSection, DocsFooter, docsStyles
+
+### CI/CD
+
+- Add GitHub Actions CI/CD pipeline with lint and typecheck
+- Reorder CI steps: build before typecheck (required for @claudetree/shared types)
+
+### Bug Fixes
+
+- **web**: Fix SessionDetailPage test failures (missing /ai-review API mock)
+- **web**: Fix WebSocket auto-reconnect race condition in tests
+- **cli**: Fix unused variable lint error in start.ts
+
+## [0.4.4] - 2026-01-08
 
 ### Features
 

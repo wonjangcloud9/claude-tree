@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/core",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "Core domain and infrastructure for claudetree",
   "type": "module",
   "main": "./dist/index.js",
@@ -31,16 +31,16 @@
   "license": "MIT",
   "dependencies": {
     "@claudetree/shared": "workspace:*",
-    "debug": "^4.4.0",
-    "execa": "^9.5.0",
-    "octokit": "^4.1.0",
-    "ws": "^8.18.0"
+    "debug": "^4.4.3",
+    "execa": "^9.6.1",
+    "octokit": "^5.0.5",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/debug": "^4.1.12",
-    "@types/ws": "^8.5.0",
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4",
     "yaml": "^2.8.2"
   }
 }
