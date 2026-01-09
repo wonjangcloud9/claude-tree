@@ -55,7 +55,9 @@ const mockSession = {
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-// Mock WebSocket
+// Mock WebSocket with controllable auto-connect
+let shouldAutoConnect = true;
+
 class MockWebSocket {
   static readonly CONNECTING = 0;
   static readonly OPEN = 1;
@@ -76,12 +78,16 @@ class MockWebSocket {
   constructor(public url: string) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     mockWebSocketInstance = this;
-    setTimeout(() => {
-      this.readyState = MockWebSocket.OPEN;
-      if (this.onopen) {
-        this.onopen(new Event('open'));
-      }
-    }, 10);
+    if (shouldAutoConnect) {
+      setTimeout(() => {
+        if (this.readyState !== MockWebSocket.CLOSED) {
+          this.readyState = MockWebSocket.OPEN;
+          if (this.onopen) {
+            this.onopen(new Event('open'));
+          }
+        }
+      }, 10);
+    }
   }
 
   close(code?: number) {
@@ -96,6 +102,13 @@ class MockWebSocket {
       this.onerror(new Event('error'));
     }
   }
+
+  simulateOpen() {
+    this.readyState = MockWebSocket.OPEN;
+    if (this.onopen) {
+      this.onopen(new Event('open'));
+    }
+  }
 }
 
 let mockWebSocketInstance: MockWebSocket | null = null;
@@ -105,6 +118,7 @@ describe('SessionDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockWebSocketInstance = null;
+    shouldAutoConnect = true;
     mockFetch.mockImplementation((url: string) => {
       if (url.includes('/api/sessions/') && !url.includes('events') && !url.includes('approvals') && !url.includes('review')) {
         return Promise.resolve({
@@ -122,6 +136,12 @@ describe('SessionDetailPage', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([]),
+        });
+      }
+      if (url.includes('/ai-review')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(null),
         });
       }
       if (url.includes('/review')) {
@@ -166,6 +186,9 @@ describe('SessionDetailPage', () => {
         expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
       });
 
+      // Disable auto-connect for retry attempts
+      shouldAutoConnect = false;
+
       // Simulate WebSocket error
       if (mockWebSocketInstance) {
         mockWebSocketInstance.simulateError();
@@ -183,6 +206,9 @@ describe('SessionDetailPage', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
       });
+
+      // Disable auto-connect for retry attempts
+      shouldAutoConnect = false;
 
       // Simulate WebSocket error and disconnect
       if (mockWebSocketInstance) {
@@ -202,6 +228,9 @@ describe('SessionDetailPage', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
       });
+
+      // Disable auto-connect for retry attempts
+      shouldAutoConnect = false;
 
       // Simulate WebSocket failure
       if (mockWebSocketInstance) {
