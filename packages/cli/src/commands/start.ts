@@ -534,7 +534,7 @@ export const startCommand = new Command('start')
               }
             }
           }
-        } catch (err) {
+        } catch {
           console.log('   \x1b[33m⚠ Could not generate AI review summary\x1b[0m');
         }
       }
