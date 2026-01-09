@@ -18,16 +18,15 @@ import type {
   Session,
   EventType,
   SessionTemplate,
-  ProgressStep,
-  SessionProgress,
   TDDConfig,
   TDDSessionState,
-  ValidationGate,
 } from '@claudetree/shared';
 
 import { parseIssueInput } from './start/parseIssueInput.js';
 import { createOrFindWorktree } from './start/createWorktree.js';
 import { buildPrompt, buildSystemPrompt, formatDuration } from './start/buildPrompt.js';
+import { parseToolCall, detectProgressStep, updateProgress } from './start/progressTracker.js';
+import { parseGates } from './start/validationGates.js';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -68,97 +67,6 @@ async function loadConfig(cwd: string): Promise<Config | null> {
   } catch {
     return null;
   }
-}
-
-function parseGates(gatesStr: string, testCommand?: string): ValidationGate[] {
-  const gateNames = gatesStr.split(',').map(g => g.trim().toLowerCase());
-  const gates: ValidationGate[] = [];
-
-  gates.push({ name: 'install', command: 'pnpm install --frozen-lockfile', required: true });
-
-  for (const name of gateNames) {
-    switch (name) {
-      case 'test':
-        gates.push({ name: 'test', command: testCommand ?? 'pnpm test:run', required: true });
-        break;
-      case 'type':
-        gates.push({ name: 'type', command: 'pnpm -r exec tsc --noEmit', required: true });
-        break;
-      case 'lint':
-        gates.push({ name: 'lint', command: 'pnpm lint', required: false });
-        break;
-      case 'build':
-        gates.push({ name: 'build', command: 'pnpm build', required: false });
-        break;
-    }
-  }
-
-  return gates;
-}
-
-function parseToolCall(
-  content: string
-): { toolName: string; parameters: Record<string, unknown> } | null {
-  const match = content.match(/^(\w+):\s*(.+)$/);
-  if (!match) return null;
-
-  try {
-    return {
-      toolName: match[1] ?? '',
-      parameters: JSON.parse(match[2] ?? '{}'),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function detectProgressStep(toolName: string, params: Record<string, unknown>): ProgressStep | null {
-  const command = String(params.command ?? '');
-
-  if (toolName === 'Bash') {
-    if (command.includes('test') || command.includes('jest') || command.includes('vitest') || command.includes('pytest')) {
-      return 'testing';
-    }
-    if (command.includes('git commit')) {
-      return 'committing';
-    }
-    if (command.includes('gh pr create') || command.includes('git push')) {
-      return 'creating_pr';
-    }
-  }
-
-  if (toolName === 'Edit' || toolName === 'Write') {
-    return 'implementing';
-  }
-
-  if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
-    return 'analyzing';
-  }
-
-  return null;
-}
-
-function updateProgress(
-  progress: SessionProgress,
-  newStep: ProgressStep
-): SessionProgress {
-  const stepOrder: ProgressStep[] = ['analyzing', 'implementing', 'testing', 'committing', 'creating_pr'];
-  const currentIdx = stepOrder.indexOf(progress.currentStep);
-  const newIdx = stepOrder.indexOf(newStep);
-
-  if (newIdx > currentIdx) {
-    const completed = new Set(progress.completedSteps);
-    for (let i = 0; i <= currentIdx; i++) {
-      completed.add(stepOrder[i]!);
-    }
-    return {
-      ...progress,
-      currentStep: newStep,
-      completedSteps: Array.from(completed),
-    };
-  }
-
-  return progress;
 }
 
 export const startCommand = new Command('start')

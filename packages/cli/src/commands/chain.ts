@@ -1,9 +1,17 @@
 import { Command } from 'commander';
 import { join } from 'node:path';
-import { access, readFile, writeFile, mkdir } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import type { Chain, ChainItem, ChainSummary } from '@claudetree/shared';
+import type { Chain, ChainItem } from '@claudetree/shared';
+
+import {
+  getBranchNameForIssue,
+  getChainSummary,
+  printChainStatus,
+  saveChain,
+  waitForSession,
+} from './chain/index.js';
 
 const CONFIG_DIR = '.claudetree';
 const CHAINS_DIR = 'chains';
@@ -24,13 +32,6 @@ interface Config {
   };
 }
 
-interface SessionInfo {
-  id: string;
-  issueNumber?: number;
-  status: string;
-  worktreePath?: string;
-}
-
 async function loadConfig(cwd: string): Promise<Config | null> {
   try {
     const configPath = join(cwd, CONFIG_DIR, 'config.json');
@@ -40,102 +41,6 @@ async function loadConfig(cwd: string): Promise<Config | null> {
   } catch {
     return null;
   }
-}
-
-async function loadSessions(cwd: string): Promise<SessionInfo[]> {
-  try {
-    const sessionsPath = join(cwd, CONFIG_DIR, 'sessions.json');
-    const content = await readFile(sessionsPath, 'utf-8');
-    return JSON.parse(content) as SessionInfo[];
-  } catch {
-    return [];
-  }
-}
-
-async function saveChain(cwd: string, chain: Chain): Promise<void> {
-  const chainsDir = join(cwd, CONFIG_DIR, CHAINS_DIR);
-  await mkdir(chainsDir, { recursive: true });
-  await writeFile(
-    join(chainsDir, `${chain.id}.json`),
-    JSON.stringify(chain, null, 2)
-  );
-}
-
-function truncate(str: string, maxLen: number): string {
-  if (str.length <= maxLen) return str;
-  return str.slice(0, maxLen - 3) + '...';
-}
-
-function printChainStatus(chain: Chain): void {
-  console.clear();
-  console.log('\n\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');
-  console.log('\x1b[36m║           Dependency Chain               ║\x1b[0m');
-  console.log('\x1b[36m╚══════════════════════════════════════════╝\x1b[0m\n');
-
-  for (let i = 0; i < chain.items.length; i++) {
-    const item = chain.items[i]!;
-    const icon =
-      item.status === 'pending' ? '\x1b[90m○\x1b[0m' :
-      item.status === 'running' ? '\x1b[33m◐\x1b[0m' :
-      item.status === 'completed' ? '\x1b[32m●\x1b[0m' :
-      item.status === 'skipped' ? '\x1b[90m◌\x1b[0m' :
-      '\x1b[31m✗\x1b[0m';
-
-    const arrow = i < chain.items.length - 1 ? '\x1b[90m  │\x1b[0m' : '';
-    const base = item.baseBranch ? `\x1b[90m← ${item.baseBranch}\x1b[0m` : '';
-    const branch = item.branchName ? `\x1b[36m[${item.branchName}]\x1b[0m ` : '';
-    const error = item.error ? `\x1b[31m (${truncate(item.error, 30)})\x1b[0m` : '';
-
-    console.log(`  ${icon} ${branch}#${item.issue}${error} ${base}`);
-    if (arrow) console.log(arrow);
-  }
-
-  const summary = getChainSummary(chain);
-  console.log(`\n  \x1b[90m[${summary.completed}/${summary.total}] completed`);
-  if (summary.failed > 0) console.log(`  \x1b[31m${summary.failed} failed\x1b[0m`);
-  if (summary.skipped > 0) console.log(`  \x1b[90m${summary.skipped} skipped\x1b[0m`);
-  console.log('\x1b[0m');
-}
-
-function getChainSummary(chain: Chain): ChainSummary {
-  return {
-    total: chain.items.length,
-    completed: chain.items.filter(i => i.status === 'completed').length,
-    failed: chain.items.filter(i => i.status === 'failed').length,
-    skipped: chain.items.filter(i => i.status === 'skipped').length,
-    pending: chain.items.filter(i => i.status === 'pending').length,
-  };
-}
-
-async function waitForSession(
-  cwd: string,
-  issueNumber: number,
-  timeoutMs: number = 300000
-): Promise<{ success: boolean; sessionId?: string; error?: string }> {
-  const startTime = Date.now();
-  let lastStatus = '';
-
-  while (Date.now() - startTime < timeoutMs) {
-    const sessions = await loadSessions(cwd);
-    const session = sessions.find(s => s.issueNumber === issueNumber);
-
-    if (session) {
-      if (session.status !== lastStatus) {
-        lastStatus = session.status;
-      }
-
-      if (session.status === 'completed') {
-        return { success: true, sessionId: session.id };
-      }
-      if (session.status === 'failed') {
-        return { success: false, sessionId: session.id, error: 'Session failed' };
-      }
-    }
-
-    await new Promise(r => setTimeout(r, 3000));
-  }
-
-  return { success: false, error: 'Session timeout' };
 }
 
 async function startChainItem(
@@ -169,19 +74,6 @@ async function startChainItem(
 
   // Wait for session to be created
   await new Promise(r => setTimeout(r, 3000));
-}
-
-function getBranchNameForIssue(issue: string): string {
-  // If it's a number, assume issue number
-  if (/^\d+$/.test(issue)) {
-    return `issue-${issue}`;
-  }
-  // Otherwise, sanitize the task name
-  return issue
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 50);
 }
 
 export const chainCommand = new Command('chain')
