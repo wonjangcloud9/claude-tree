@@ -173,7 +173,7 @@ export default function StatsPage() {
                   borderRadius: '8px',
                 }}
                 labelStyle={{ color: 'var(--text-primary)' }}
-                formatter={(v: number) => [formatCost(v), 'Cost']}
+                formatter={(v) => [formatCost(v as number), 'Cost']}
               />
               <Line type="monotone" dataKey="costUsd" stroke="var(--success)" strokeWidth={2} dot={false} />
             </LineChart>
@@ -206,7 +206,7 @@ export default function StatsPage() {
                   borderRadius: '8px',
                 }}
                 labelStyle={{ color: 'var(--text-primary)' }}
-                formatter={(v: number) => [`${v.toFixed(1)}%`, 'Success Rate']}
+                formatter={(v) => [`${(v as number).toFixed(1)}%`, 'Success Rate']}
               />
               <Bar dataKey="successRate" fill="var(--terminal-cyan)" radius={[4, 4, 0, 0]} />
             </BarChart>
