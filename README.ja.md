@@ -153,6 +153,7 @@ ct web       # Webダッシュボード http://localhost:3000
 | `ct batch [issues]` | Issue一覧を並列処理 |
 | `ct auto` | オープンIssueを自動取得＋コンフリクト検出 |
 | `ct chain [issues]` | Issueを順次実行（依存関係順） |
+| `ct config` | 設定の表示・変更（`ct config set github.owner myorg`） |
 | `ct web` | Webダッシュボード起動（localhost:3000） |
 | `ct clean` | 完了済みworktree削除 |
 | `ct doctor` | 環境確認：Node、Git、Claude CLI、GitHub |

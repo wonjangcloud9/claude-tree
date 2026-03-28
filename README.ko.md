@@ -153,6 +153,7 @@ ct web              # 웹 대시보드 http://localhost:3000
 | `ct batch [issues]` | 이슈 목록을 병렬 처리 |
 | `ct auto` | 오픈 이슈 자동 가져오기 + 충돌 감지 |
 | `ct chain [issues]` | 이슈를 순차 실행 (의존성 순서) |
+| `ct config` | 설정 조회/수정 (`ct config set github.owner myorg`) |
 | `ct web` | 웹 대시보드 실행 (localhost:3000) |
 | `ct clean` | 완료된 worktree 정리 |
 | `ct doctor` | 환경 확인: Node, Git, Claude CLI, GitHub |

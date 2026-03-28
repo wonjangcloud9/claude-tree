@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.9] - 2026-03-28
+
+### Features
+
+- **cli**: Reorder commands in `ct --help` for logical workflow grouping (init→start→status→stats→log→...)
+- **cli**: Add Quick Start guide to `ct --help` footer
+
+### Documentation
+
+- **root**: Add `ct config` to root translated READMEs (ko/ja/zh command tables)
+
 ## [0.5.8] - 2026-03-28
 
 ### Documentation

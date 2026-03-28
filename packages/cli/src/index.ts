@@ -26,20 +26,29 @@ program
   .description('Issue-to-PR automation: parallel Claude Code sessions with cost tracking & web dashboard')
   .version(version);
 
+program.addCommand(initCommand);
+program.addCommand(startCommand);
+program.addCommand(statusCommand);
+program.addCommand(statsCommand);
+program.addCommand(logCommand);
+program.addCommand(stopCommand);
+program.addCommand(resumeCommand);
 program.addCommand(batchCommand);
 program.addCommand(bustercallCommand);
 program.addCommand(chainCommand);
-program.addCommand(cleanCommand);
 program.addCommand(configCommand);
-program.addCommand(doctorCommand);
-program.addCommand(initCommand);
-program.addCommand(listCommand);
-program.addCommand(logCommand);
-program.addCommand(resumeCommand);
-program.addCommand(startCommand);
-program.addCommand(statsCommand);
-program.addCommand(statusCommand);
-program.addCommand(stopCommand);
 program.addCommand(webCommand);
+program.addCommand(listCommand);
+program.addCommand(cleanCommand);
+program.addCommand(doctorCommand);
+
+program.addHelpText('after', `
+Quick Start:
+  $ ct init                              # initialize in your project
+  $ ct start <github-issue-url>          # fire and forget
+  $ ct status                            # monitor progress
+  $ ct stats                             # view cost analytics
+
+Docs: https://github.com/wonjangcloud9/claude-tree`);
 
 program.parse();

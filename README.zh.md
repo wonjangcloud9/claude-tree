@@ -153,6 +153,7 @@ ct web              # Web仪表板 http://localhost:3000
 | `ct batch [issues]` | 并行处理多个问题 |
 | `ct auto` | 自动获取开放问题（带冲突检测） |
 | `ct chain [issues]` | 按依赖顺序执行问题 |
+| `ct config` | 查看或修改配置（`ct config set github.owner myorg`） |
 | `ct web` | 启动Web仪表板（localhost:3000） |
 | `ct clean` | 清理已完成的worktree |
 | `ct doctor` | 检查环境设置：Node、Git、Claude CLI、GitHub |
