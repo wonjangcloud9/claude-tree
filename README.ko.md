@@ -5,6 +5,15 @@
   <a href="README.zh.md">中文</a>
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/@claudetree/cli"><img src="https://img.shields.io/npm/v/@claudetree/cli.svg" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@claudetree/cli"><img src="https://img.shields.io/npm/dm/@claudetree/cli.svg" alt="npm downloads"></a>
+  <a href="https://github.com/wonjangcloud9/claude-tree/actions/workflows/ci.yml"><img src="https://github.com/wonjangcloud9/claude-tree/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/wonjangcloud9/claude-tree/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/@claudetree/cli.svg" alt="license"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D22-brightgreen" alt="node version">
+  <img src="https://img.shields.io/badge/TypeScript-ESM-blue" alt="TypeScript ESM">
+</p>
+
 # claudetree
 
 **여러 Claude Code 세션을 병렬로 실행** — 각각 독립된 git worktree에서 동작합니다.
@@ -116,9 +125,12 @@ ct start https://github.com/you/my-web-app/issues/42
 ### 4단계: 진행상황 모니터링
 
 ```bash
-ct status    # CLI 상태 뷰 (진행바 & 비용)
-ct status -w # Watch 모드 (자동 새로고침)
-ct web       # 웹 대시보드 http://localhost:3000
+ct status           # CLI 상태 뷰 (진행바 & 비용)
+ct status -w        # Watch 모드 (자동 새로고침)
+ct log abc123       # 세션 이벤트 조회
+ct log abc123 -f    # 팔로우 모드 (실시간 테일링)
+ct stats            # 비용 분석 및 성공률
+ct web              # 웹 대시보드 http://localhost:3000
 ```
 
 **상태 출력 포함:**
@@ -131,15 +143,19 @@ ct web       # 웹 대시보드 http://localhost:3000
 | 명령어 | 설명 |
 |--------|------|
 | `ct init` | 프로젝트에 claudetree 초기화 |
-| `ct start <issue>` | Worktree 생성 및 Claude 세션 시작 |
-| `ct list` | 모든 worktree 목록 |
-| `ct status` | 모든 세션 상태 (진행상황 & 비용) |
+| `ct start <issue>` | GitHub 이슈에 대한 Claude 세션 시작 |
+| `ct status` | 모든 세션 상태 표시 (진행률 및 비용 포함) |
+| `ct stats` | 세션 분석: 비용, 토큰, 성공률 |
+| `ct log <session>` | 세션 이벤트 조회 (`-f` 팔로우 모드 지원) |
 | `ct stop [id]` | 세션 중지 |
-| `ct web` | 웹 대시보드 시작 |
-| `ct doctor` | 환경 설정 확인 (Claude CLI, Git, GitHub) |
-| `ct demo` | 기능 탐색용 인터랙티브 데모 |
-| `ct bustercall` | 여러 이슈를 병렬로 일괄 처리 |
-| `ct chain` | 의존성 체인으로 이슈 순차 실행 |
+| `ct resume <id>` | 일시중지된 세션 재개 |
+| `ct list` | 모든 worktree 목록 |
+| `ct batch [issues]` | 이슈 목록을 병렬 처리 |
+| `ct auto` | 오픈 이슈 자동 가져오기 + 충돌 감지 |
+| `ct chain [issues]` | 이슈를 순차 실행 (의존성 순서) |
+| `ct web` | 웹 대시보드 실행 (localhost:3000) |
+| `ct clean` | 완료된 worktree 정리 |
+| `ct doctor` | 환경 확인: Node, Git, Claude CLI, GitHub |
 
 ### Start 옵션
 
@@ -229,6 +245,21 @@ ct web    # http://localhost:3000
 - 세션 상태 변경 시 자동 새로고침
 - Claude 출력 라이브 스트리밍
 
+### 통계 대시보드 (NEW)
+
+`/stats`에서 세션 분석 확인:
+
+```bash
+ct web    # http://localhost:3000/stats 접속
+```
+
+**제공 지표:**
+- 총 세션 수, 성공률
+- 토큰 사용량 (입력/출력)
+- 일별/주별 비용 추적 및 추세
+- 평균 세션 소요 시간
+- 시각화 차트 (라인, 바)
+
 ## 내장 스킬
 
 ### TDD 워크플로우
@@ -255,24 +286,40 @@ ct start 42 --template bugfix     # 버그 수정 집중
 ct start 42 --template feature    # 기능 구현
 ct start 42 --template refactor   # 코드 리팩토링
 ct start 42 --template review     # 코드 리뷰
+ct start 42 --template docs       # 문서 생성
 ```
 
-## Bustercall로 일괄 처리
+### 문서 생성 스킬 (NEW)
 
-단일 명령으로 여러 GitHub 이슈를 병렬 처리:
+자동으로 종합 문서를 생성:
 
 ```bash
-# 'bug' 라벨 이슈 처리 (3개 병렬 세션)
-ct bustercall --label bug --parallel 3
-
-# 고우선순위 이슈 처리
-ct bustercall --label high-priority --parallel 5
-
-# 세션별 예산 제한
-ct bustercall --label feature --parallel 3 --max-cost 0.50
+ct start 42 --skill docs
+# 또는
+ct start 42 --template docs
 ```
 
-### Bustercall 옵션
+Claude가 수행하는 작업:
+1. 코드베이스 구조 분석
+2. 공개 API와 타입 식별
+3. 설치, 사용법, API 레퍼런스가 포함된 README.md 생성
+4. 상세 문서를 위한 docs/ 폴더 생성
+
+## 배치 처리
+
+여러 GitHub 이슈를 병렬로 처리합니다. `ct auto` (스마트 모드) 또는 `ct batch` (수동 모드) 사용:
+
+```bash
+# Auto: 오픈 이슈를 자동 가져오기 + 스마트 충돌 감지
+ct auto --label bug --parallel 3
+ct auto --label high-priority --parallel 5
+
+# Manual: 이슈를 직접 지정
+ct batch 101 102 103
+ct batch --label bug --limit 10
+```
+
+### Auto/Batch 옵션
 
 | 옵션 | 설명 |
 |------|------|
@@ -364,14 +411,16 @@ PR은 자동으로 `develop` 브랜치를 대상으로 생성됩니다.
 
 ## 비교
 
-| 기능 | 수동 Claude | claudetree |
+| 기능 | Claude Code | claudetree |
 |------|-------------|------------|
-| 다중 세션 | 한 번에 하나 | 무제한 병렬 |
+| 병렬 세션 | 한 번에 하나 | 무제한 병렬 |
+| 이슈→PR 파이프라인 | 수동 복사-붙여넣기 | `ct start <url>` |
+| 비용 추적 | 현재 세션만 | 세션별 + 분석 (`ct stats`) |
+| 배치 처리 | N/A | `ct batch` / `ct auto` |
+| 의존성 체인 | N/A | `ct chain` |
+| 세션 로그 | 터미널 스크롤 | `ct log` + 웹 대시보드 |
 | 컨텍스트 분리 | 공유 디렉토리 | 별도 worktree |
-| 이슈 통합 | 복사-붙여넣기 | 자동 가져오기 |
-| 진행 모니터링 | 터미널만 | 웹 대시보드 |
-| PR 생성 | 수동 | 자동 |
-| 세션 관리 | 수동 | 중앙 집중 |
+| 진행 모니터링 | 터미널만 | CLI + 웹 대시보드 |
 
 ## 제한사항
 

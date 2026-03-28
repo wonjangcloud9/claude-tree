@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.5] - 2026-03-28
+
+### Features
+
+- **cli**: Auto-detect GitHub remote in `ct init` - parses git origin to prefill owner/repo in config
+
+### Documentation
+
+- **root**: Sync Korean README (README.ko.md) - badges, comparison table, batch section, new commands
+- **root**: Sync Japanese README (README.ja.md) - badges, comparison table, batch section, new commands
+- **root**: Sync Chinese README (README.zh.md) - badges, comparison table, batch section, new commands
+
+### Chores
+
+- Clean 5 stale worktrees from previous sessions
+
 ## [0.5.4] - 2026-03-28
 
 ### Documentation

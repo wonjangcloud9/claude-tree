@@ -5,6 +5,15 @@
   <a href="README.zh.md">中文</a>
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/@claudetree/cli"><img src="https://img.shields.io/npm/v/@claudetree/cli.svg" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@claudetree/cli"><img src="https://img.shields.io/npm/dm/@claudetree/cli.svg" alt="npm downloads"></a>
+  <a href="https://github.com/wonjangcloud9/claude-tree/actions/workflows/ci.yml"><img src="https://github.com/wonjangcloud9/claude-tree/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/wonjangcloud9/claude-tree/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/@claudetree/cli.svg" alt="license"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D22-brightgreen" alt="node version">
+  <img src="https://img.shields.io/badge/TypeScript-ESM-blue" alt="TypeScript ESM">
+</p>
+
 # claudetree
 
 **并行运行多个Claude Code会话** — 每个会话在独立的git worktree中运行。
@@ -116,9 +125,12 @@ ct start https://github.com/you/my-web-app/issues/42
 ### 步骤4：监控进度
 
 ```bash
-ct status    # CLI状态视图（进度条 & 成本）
-ct status -w # 监视模式（自动刷新）
-ct web       # Web仪表板 http://localhost:3000
+ct status           # CLI状态视图（进度条 & 成本）
+ct status -w        # 监视模式（自动刷新）
+ct log abc123       # 查看会话事件
+ct log abc123 -f    # 跟踪模式（实时追踪）
+ct stats            # 成本分析与成功率
+ct web              # Web仪表板 http://localhost:3000
 ```
 
 **状态输出包括：**
@@ -131,15 +143,19 @@ ct web       # Web仪表板 http://localhost:3000
 | 命令 | 描述 |
 |------|------|
 | `ct init` | 在项目中初始化claudetree |
-| `ct start <issue>` | 创建Worktree并启动Claude会话 |
-| `ct list` | 列出所有worktree |
+| `ct start <issue>` | 为GitHub问题启动Claude会话 |
 | `ct status` | 显示所有会话状态（进度 & 成本） |
+| `ct stats` | 会话分析：成本、Token、成功率 |
+| `ct log <session>` | 查看会话事件（支持 `-f` 跟踪模式） |
 | `ct stop [id]` | 停止会话 |
-| `ct web` | 启动Web仪表板 |
-| `ct doctor` | 检查环境设置（Claude CLI、Git、GitHub） |
-| `ct demo` | 功能探索的交互式演示 |
-| `ct bustercall` | 并行批量处理多个问题 |
-| `ct chain` | 按依赖链顺序执行问题 |
+| `ct resume <id>` | 恢复暂停的会话 |
+| `ct list` | 列出所有worktree |
+| `ct batch [issues]` | 并行处理多个问题 |
+| `ct auto` | 自动获取开放问题（带冲突检测） |
+| `ct chain [issues]` | 按依赖顺序执行问题 |
+| `ct web` | 启动Web仪表板（localhost:3000） |
+| `ct clean` | 清理已完成的worktree |
+| `ct doctor` | 检查环境设置：Node、Git、Claude CLI、GitHub |
 
 ### Start选项
 
@@ -229,6 +245,21 @@ ct web    # http://localhost:3000
 - 会话状态更改时自动刷新
 - Claude输出实时流式传输
 
+### 统计仪表板 (NEW)
+
+在 `/stats` 访问会话分析：
+
+```bash
+ct web    # 访问 http://localhost:3000/stats
+```
+
+**可用指标：**
+- 总会话数、成功率
+- Token使用量（输入/输出）
+- 成本跟踪（每日/每周趋势）
+- 平均会话持续时间
+- 可视化图表（折线图、柱状图）
+
 ## 内置技能
 
 ### TDD工作流
@@ -255,24 +286,40 @@ ct start 42 --template bugfix     # 专注于bug修复
 ct start 42 --template feature    # 功能实现
 ct start 42 --template refactor   # 代码重构
 ct start 42 --template review     # 代码审查
+ct start 42 --template docs       # 文档生成
 ```
 
-## Bustercall批量处理
+### 文档技能 (NEW)
 
-用单个命令并行处理多个GitHub问题：
+自动生成全面的文档：
 
 ```bash
-# 处理带'bug'标签的问题（3个并行会话）
-ct bustercall --label bug --parallel 3
-
-# 处理高优先级问题
-ct bustercall --label high-priority --parallel 5
-
-# 每个会话的预算限制
-ct bustercall --label feature --parallel 3 --max-cost 0.50
+ct start 42 --skill docs
+# 或
+ct start 42 --template docs
 ```
 
-### Bustercall选项
+Claude将执行：
+1. 分析代码库结构
+2. 识别公共API和类型
+3. 生成README.md（安装、使用、API参考）
+4. 创建docs/目录用于详细文档
+
+## 批量处理
+
+并行处理多个GitHub问题。使用 `ct auto`（智能模式）或 `ct batch`（手动模式）：
+
+```bash
+# Auto: 自动获取所有开放问题，带智能冲突检测
+ct auto --label bug --parallel 3
+ct auto --label high-priority --parallel 5
+
+# Manual: 指定具体问题
+ct batch 101 102 103
+ct batch --label bug --limit 10
+```
+
+### Auto/Batch选项
 
 | 选项 | 描述 |
 |------|------|
@@ -364,14 +411,16 @@ PR自动创建并以 `develop` 分支为目标。
 
 ## 对比
 
-| 功能 | 手动Claude | claudetree |
-|------|------------|------------|
-| 多会话 | 一次一个 | 无限并行 |
+| 功能 | Claude Code | claudetree |
+|------|-------------|------------|
+| 并行会话 | 一次一个 | 无限并行 |
+| Issue到PR流水线 | 手动复制粘贴 | `ct start <url>` |
+| 成本追踪 | 仅当前会话 | 按会话追踪 + 分析（`ct stats`） |
+| 批量处理 | 不支持 | `ct batch` / `ct auto` |
+| 依赖链 | 不支持 | `ct chain` |
+| 会话日志 | 滚动终端 | `ct log` + Web仪表板 |
 | 上下文隔离 | 共享目录 | 独立worktree |
-| 问题集成 | 复制粘贴 | 自动获取 |
-| 进度监控 | 仅终端 | Web仪表板 |
-| PR创建 | 手动 | 自动 |
-| 会话管理 | 手动 | 集中管理 |
+| 进度监控 | 仅终端 | CLI + Web仪表板 |
 
 ## 限制
 
