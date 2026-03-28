@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.7] - 2026-03-28
+
+### Features
+
+- **cli**: Add `ct config` command - view/modify config without editing JSON
+  - `ct config` shows all config with colored output
+  - `ct config get github.owner` reads specific keys (dot notation)
+  - `ct config set github.owner myorg` sets values
+  - Supports `--json` flag for machine-readable output
+
+### Tests
+
+- **cli**: Add 5 tests for GitHub remote auto-detection in `ct init`
+  - Tests SSH/HTTPS URL parsing, missing remote fallback, output messages
+- **cli**: Add 7 tests for `ct config` command
+
 ## [0.5.6] - 2026-03-28
 
 ### Features

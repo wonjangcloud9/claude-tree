@@ -2,7 +2,18 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtemp, rm, readFile, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { execSync } from 'node:child_process';
 import { initCommand } from './init.js';
+
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return {
+    ...actual,
+    execSync: vi.fn(),
+  };
+});
+
+const mockExecSync = vi.mocked(execSync);
 
 describe('initCommand', () => {
   let testDir: string;
@@ -19,6 +30,7 @@ describe('initCommand', () => {
     process.exit = vi.fn() as never;
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockExecSync.mockReset();
   });
 
   afterEach(async () => {
@@ -90,6 +102,53 @@ describe('initCommand', () => {
       const config = JSON.parse(await readFile(configPath, 'utf-8'));
       expect(config.slack?.webhookUrl).toBe(
         'https://hooks.slack.com/services/xxx'
+      );
+    });
+  });
+
+  describe('GitHub remote auto-detection', () => {
+    it('should detect owner/repo from HTTPS remote', async () => {
+      mockExecSync.mockReturnValue('https://github.com/myorg/myrepo.git\n');
+      await initCommand.parseAsync(['node', 'test']);
+
+      const configPath = join(testDir, '.claudetree', 'config.json');
+      const config = JSON.parse(await readFile(configPath, 'utf-8'));
+      expect(config.github).toEqual({ owner: 'myorg', repo: 'myrepo' });
+    });
+
+    it('should detect owner/repo from SSH remote', async () => {
+      mockExecSync.mockReturnValue('git@github.com:myorg/myrepo.git\n');
+      await initCommand.parseAsync(['node', 'test']);
+
+      const configPath = join(testDir, '.claudetree', 'config.json');
+      const config = JSON.parse(await readFile(configPath, 'utf-8'));
+      expect(config.github).toEqual({ owner: 'myorg', repo: 'myrepo' });
+    });
+
+    it('should handle missing remote gracefully', async () => {
+      mockExecSync.mockImplementation(() => { throw new Error('no remote'); });
+      await initCommand.parseAsync(['node', 'test']);
+
+      const configPath = join(testDir, '.claudetree', 'config.json');
+      const config = JSON.parse(await readFile(configPath, 'utf-8'));
+      expect(config.github).toBeUndefined();
+    });
+
+    it('should show auto-detected message', async () => {
+      mockExecSync.mockReturnValue('https://github.com/testowner/testrepo.git\n');
+      await initCommand.parseAsync(['node', 'test']);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('auto-detected')
+      );
+    });
+
+    it('should show manual config hint when not detected', async () => {
+      mockExecSync.mockImplementation(() => { throw new Error('no remote'); });
+      await initCommand.parseAsync(['node', 'test']);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('not detected')
       );
     });
   });
