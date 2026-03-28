@@ -112,6 +112,7 @@ ct status
 | `ct auto` | Auto-fetch issues with conflict detection |
 | `ct chain [issues]` | Run issues sequentially (dependency order) |
 | `ct config` | View or modify config (`ct config set github.owner myorg`) |
+| `ct export` | Generate session report (markdown or JSON) |
 | `ct web` | Launch web dashboard at localhost:3000 |
 | `ct list` | List all worktrees |
 | `ct clean` | Remove finished worktrees |

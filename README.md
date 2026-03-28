@@ -154,6 +154,7 @@ ct web              # Web dashboard at http://localhost:3000
 | `ct auto` | Auto-fetch open issues with conflict detection |
 | `ct chain [issues]` | Run issues sequentially (dependency order) |
 | `ct config` | View or modify config (`ct config set github.owner myorg`) |
+| `ct export` | Generate session report (`ct export -o report.md`) |
 | `ct web` | Launch web dashboard at localhost:3000 |
 | `ct clean` | Remove finished worktrees |
 | `ct doctor` | Verify setup: Node, Git, Claude CLI, GitHub |

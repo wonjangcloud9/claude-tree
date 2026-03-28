@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.10] - 2026-03-28
+
+### Features
+
+- **cli**: Add `ct export` command - generate session reports in markdown or JSON
+  - Summary stats: sessions, success rate, cost, tokens, avg duration
+  - Per-session breakdown: issue, status, duration, cost, token usage
+  - `--format json` for machine-readable output
+  - `--output report.md` to write to file
+  - `--status completed` to filter by session status
+  - Unique feature: no competitor tool generates shareable session reports
+
 ## [0.5.9] - 2026-03-28
 
 ### Features
