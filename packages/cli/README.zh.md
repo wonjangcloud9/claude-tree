@@ -112,6 +112,7 @@ ct status
 | `ct batch [issues]` | 并行处理多个Issue |
 | `ct auto` | 自动获取Issue并检测冲突 |
 | `ct chain [issues]` | 按顺序运行Issue（依赖顺序） |
+| `ct config` | 查看或修改配置（`ct config set github.owner myorg`） |
 | `ct web` | 在 localhost:3000 启动Web仪表板 |
 | `ct list` | 列出所有worktree |
 | `ct clean` | 删除已完成的worktree |

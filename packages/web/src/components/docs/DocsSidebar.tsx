@@ -28,6 +28,7 @@ const navigation: NavItem[] = [
       { title: 'ct batch', href: '#ct-batch' },
       { title: 'ct auto', href: '#ct-auto' },
       { title: 'ct chain', href: '#ct-chain' },
+      { title: 'ct config', href: '#ct-config' },
       { title: 'ct resume', href: '#ct-resume' },
       { title: 'ct stop', href: '#ct-stop' },
       { title: 'ct clean', href: '#ct-clean' },

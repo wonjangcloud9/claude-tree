@@ -111,6 +111,7 @@ ct status
 | `ct batch [issues]` | 여러 이슈를 병렬로 처리 |
 | `ct auto` | 열린 이슈 자동 수집 및 충돌 감지 실행 |
 | `ct chain [issues]` | 이슈를 순차 실행 (의존성 순서) |
+| `ct config` | 설정 조회/수정 (`ct config set github.owner myorg`) |
 | `ct web` | 웹 대시보드 실행 (localhost:3000) |
 | `ct list` | 모든 worktree 목록 표시 |
 | `ct clean` | 완료된 worktree 제거 |

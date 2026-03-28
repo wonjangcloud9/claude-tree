@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/core",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "description": "Core engine for claudetree: worktree management, GitHub integration, session orchestration & cost tracking",
   "type": "module",
   "main": "./dist/index.js",

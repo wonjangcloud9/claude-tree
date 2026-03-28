@@ -18,7 +18,10 @@ export function CliReferenceSection() {
       <h2 id="ct-init" style={sectionTitle}>
         ct init
       </h2>
-      <p style={paragraph}>Initialize claudetree in the current Git repository.</p>
+      <p style={paragraph}>
+        Initialize claudetree in the current Git repository. GitHub remote is automatically
+        detected from git origin (supports SSH and HTTPS URLs).
+      </p>
       <CodeBlock
         code={`ct init [options]
 
@@ -367,6 +370,42 @@ ct log a1b2c3d4 --type error
 
 # Find by issue number
 ct log 42`}
+        language="bash"
+      />
+
+      <h2 id="ct-config" style={sectionTitle}>
+        ct config
+      </h2>
+      <p style={paragraph}>
+        View or modify claudetree configuration without editing JSON manually.
+      </p>
+      <CodeBlock
+        code={`ct config                          # show all config
+ct config get <key>                # get a value (dot notation)
+ct config set <key> <value>        # set a value
+ct config github                   # shorthand for get
+
+Options:
+  --json    Output as JSON`}
+        language="bash"
+      />
+
+      <h4 style={subSectionTitle}>Examples</h4>
+      <CodeBlock
+        code={`# View all configuration
+ct config
+
+# Get GitHub owner
+ct config get github.owner
+
+# Set GitHub repo
+ct config set github.repo my-project
+
+# Set Slack webhook
+ct config set slack.webhookUrl https://hooks.slack.com/xxx
+
+# JSON output for scripting
+ct config --json`}
         language="bash"
       />
 

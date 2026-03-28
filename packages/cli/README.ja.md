@@ -112,6 +112,7 @@ ct status
 | `ct batch [issues]` | 複数Issueを並列処理 |
 | `ct auto` | open Issueを自動取得し、コンフリクト検知付きで実行 |
 | `ct chain [issues]` | Issueを順序実行（依存関係順） |
+| `ct config` | 設定の表示・変更（`ct config set github.owner myorg`） |
 | `ct web` | Webダッシュボードを起動（localhost:3000） |
 | `ct list` | 全worktreeを一覧表示 |
 | `ct clean` | 完了済みworktreeを削除 |

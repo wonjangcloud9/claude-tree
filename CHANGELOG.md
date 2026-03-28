@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.8] - 2026-03-28
+
+### Documentation
+
+- **all**: Add `ct config` to command tables in all READMEs (root + CLI in 4 languages)
+- **web**: Add `ct config` section to CLI Reference docs with usage examples
+- **web**: Add `ct config` to docs sidebar navigation
+- **web**: Document GitHub auto-detection in `ct init` section
+- Quality audit: verified no stale references, all versions consistent, 100% command test coverage
+
 ## [0.5.7] - 2026-03-28
 
 ### Features
