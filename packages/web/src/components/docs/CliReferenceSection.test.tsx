@@ -45,9 +45,29 @@ describe('CliReferenceSection', () => {
     expect(document.getElementById('ct-batch')).toBeInTheDocument();
   });
 
-  it('should render ct bustercall command section', () => {
+  it('should render ct auto command section', () => {
     render(<CliReferenceSection />);
-    expect(document.getElementById('ct-bustercall')).toBeInTheDocument();
+    expect(document.getElementById('ct-auto')).toBeInTheDocument();
+  });
+
+  it('should render ct chain command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-chain')).toBeInTheDocument();
+  });
+
+  it('should render ct stats command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-stats')).toBeInTheDocument();
+  });
+
+  it('should render ct log command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-log')).toBeInTheDocument();
+  });
+
+  it('should render ct doctor command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-doctor')).toBeInTheDocument();
   });
 
   it('should render ct clean command section', () => {

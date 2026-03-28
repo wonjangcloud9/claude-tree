@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.6] - 2026-03-28
+
+### Features
+
+- **web**: Add ct stats, ct log, ct chain, ct doctor sections to CLI Reference docs page
+- **web**: Rename bustercall to auto in docs sidebar and reference section
+- **web**: Add 4 new test cases for new command sections (159 total web tests)
+
 ## [0.5.5] - 2026-03-28
 
 ### Features
