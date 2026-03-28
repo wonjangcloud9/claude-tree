@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createRequire } from 'node:module';
 import { program } from 'commander';
 import { batchCommand } from './commands/batch.js';
 import { bustercallCommand } from './commands/bustercall.js';
@@ -15,10 +16,13 @@ import { statusCommand } from './commands/status.js';
 import { stopCommand } from './commands/stop.js';
 import { webCommand } from './commands/web.js';
 
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json') as { version: string };
+
 program
   .name('claudetree')
   .description('Issue-to-PR automation: parallel Claude Code sessions with cost tracking & web dashboard')
-  .version('0.4.5');
+  .version(version);
 
 program.addCommand(batchCommand);
 program.addCommand(bustercallCommand);

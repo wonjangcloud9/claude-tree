@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/shared",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Shared types and utilities for claudetree",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,6 +26,9 @@
     "directory": "packages/shared"
   },
   "homepage": "https://github.com/wonjangcloud9/claude-tree#readme",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "license": "MIT",
   "devDependencies": {
     "typescript": "^5.9.3",

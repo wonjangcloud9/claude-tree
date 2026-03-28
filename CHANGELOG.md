@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2026-03-28
+
+### Fixes
+
+- Fix repository URL inconsistency (root pointed to wrong GitHub org)
+- Fix CLI version display (dynamic from package.json instead of hardcoded)
+- Fix `pnpm typecheck` script to match CI pipeline (`pnpm -r exec tsc --noEmit`)
+
+### Improvements
+
+- Add `engines: { node: ">=22.0.0" }` to all published packages
+- Add `.npmignore` to cli/core/shared to reduce npm package size
+- Add npm version, downloads, CI status, and license badges to README
+- Sync web package version with other packages (0.5.0 -> 0.5.1)
+
 ## [0.5.0] - 2026-03-28
 
 ### Features

@@ -6,7 +6,7 @@
   "description": "Issue-to-PR automation: parallel Claude Code sessions with cost tracking, batch processing & web dashboard",
   "repository": {
     "type": "git",
-    "url": "https://github.com/notwonjang/claude-tree.git"
+    "url": "https://github.com/wonjangcloud9/claude-tree.git"
   },
   "author": "Lucas",
   "license": "MIT",
@@ -17,7 +17,7 @@
     "test:run": "pnpm -r test:run",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint 'packages/*/src/**/*.ts' 'packages/*/src/**/*.tsx'",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm -r exec tsc --noEmit",
     "clean": "rm -rf packages/*/dist",
     "changeset": "changeset",
     "version": "changeset version",
