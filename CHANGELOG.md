@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.2] - 2026-03-28
+
+### Features
+
+- **cli**: Add `ct log` command - view session events/output in terminal (supports --follow, --type filter, --json)
+
+### Performance
+
+- **cli/core**: Exclude test files from production build via `tsconfig.build.json` - CLI package 54% smaller, Core package 43% smaller on npm
+
 ## [0.5.1] - 2026-03-28
 
 ### Fixes

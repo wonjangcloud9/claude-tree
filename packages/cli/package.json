@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/cli",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Issue-to-PR automation: parallel Claude Code sessions with cost tracking, batch processing & web dashboard",
   "type": "module",
   "bin": {
@@ -12,7 +12,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "test": "vitest",

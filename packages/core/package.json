@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/core",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Core engine for claudetree: worktree management, GitHub integration, session orchestration & cost tracking",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,7 +16,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "dev": "tsc --watch",
     "test": "vitest",
     "test:run": "vitest run",
