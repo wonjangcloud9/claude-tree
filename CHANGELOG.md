@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-03-28
+
+### Features
+
+- **cli**: Add `ct stats` command for terminal-based session analytics (cost, tokens, success rate, daily breakdown)
+- **cli**: Improve package positioning to clearly communicate value vs Claude Code native
+
+### Removed
+
+- **cli**: Remove `ct demo` command (unnecessary bloat for real users)
+- **core**: Remove CI workflow generation tests (overlaps with native Claude Code)
+
+### Improvements
+
+- **cli**: Update CLI description to highlight key differentiators: issue-to-PR automation, parallel sessions, cost tracking
+- **all**: Update package descriptions and keywords for better npm discoverability
+
 ## [0.4.5] - 2026-01-09
 
 ### Features

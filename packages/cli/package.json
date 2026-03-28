@@ -1,7 +1,7 @@
 {
   "name": "@claudetree/cli",
-  "version": "0.4.5",
-  "description": "CLI for claudetree - Manage Claude sessions with git worktrees",
+  "version": "0.5.0",
+  "description": "Issue-to-PR automation: parallel Claude Code sessions with cost tracking, batch processing & web dashboard",
   "type": "module",
   "bin": {
     "claudetree": "./dist/index.js",
@@ -21,11 +21,15 @@
   },
   "keywords": [
     "claude",
+    "claude-code",
     "cli",
     "git",
     "worktree",
     "ai",
-    "session"
+    "automation",
+    "github-issues",
+    "parallel-sessions",
+    "cost-tracking"
   ],
   "repository": {
     "type": "git",

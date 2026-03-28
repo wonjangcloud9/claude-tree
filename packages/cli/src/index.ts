@@ -5,31 +5,31 @@ import { batchCommand } from './commands/batch.js';
 import { bustercallCommand } from './commands/bustercall.js';
 import { chainCommand } from './commands/chain.js';
 import { cleanCommand } from './commands/clean.js';
-import { demoCommand } from './commands/demo.js';
 import { doctorCommand } from './commands/doctor.js';
 import { initCommand } from './commands/init.js';
 import { listCommand } from './commands/list.js';
 import { resumeCommand } from './commands/resume.js';
 import { startCommand } from './commands/start.js';
+import { statsCommand } from './commands/stats.js';
 import { statusCommand } from './commands/status.js';
 import { stopCommand } from './commands/stop.js';
 import { webCommand } from './commands/web.js';
 
 program
   .name('claudetree')
-  .description('Git Worktree-based Claude Code multi-session manager')
-  .version('0.1.0');
+  .description('Issue-to-PR automation: parallel Claude Code sessions with cost tracking & web dashboard')
+  .version('0.4.5');
 
 program.addCommand(batchCommand);
 program.addCommand(bustercallCommand);
 program.addCommand(chainCommand);
 program.addCommand(cleanCommand);
-program.addCommand(demoCommand);
 program.addCommand(doctorCommand);
 program.addCommand(initCommand);
 program.addCommand(listCommand);
 program.addCommand(resumeCommand);
 program.addCommand(startCommand);
+program.addCommand(statsCommand);
 program.addCommand(statusCommand);
 program.addCommand(stopCommand);
 program.addCommand(webCommand);
