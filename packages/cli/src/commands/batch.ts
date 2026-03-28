@@ -101,7 +101,7 @@ function printStatus(items: BatchItem[]): void {
 }
 
 export const batchCommand = new Command('batch')
-  .description('Start multiple Claude sessions in parallel')
+  .description('Process a list of issues in parallel (manual selection)')
   .argument('[issues...]', 'Issue numbers or GitHub URLs')
   .option('-l, --label <label>', 'Filter GitHub issues by label')
   .option('-n, --limit <number>', 'Maximum number of issues to process', '5')

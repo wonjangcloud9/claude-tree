@@ -147,7 +147,7 @@ function printResult(result: CheckResult): void {
 }
 
 export const doctorCommand = new Command('doctor')
-  .description('Check environment and dependencies for claudetree')
+  .description('Verify setup: Node, Git, Claude CLI, GitHub auth')
   .option('-q, --quiet', 'Only show failures and warnings', false)
   .action(async (options: { quiet: boolean }) => {
     console.log(`\n${COLORS.bold}claudetree doctor${COLORS.reset}\n`);

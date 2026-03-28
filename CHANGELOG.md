@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.3] - 2026-03-28
+
+### Features
+
+- **cli**: Add `ct auto` as intuitive alias for `bustercall` (auto-fetch + conflict detection)
+- **cli**: Overhaul CLI README for npm - clear value prop table, 60-second quick start, all commands documented
+
+### Improvements
+
+- **cli**: Improve all command descriptions for better `ct --help` output
+- **cli**: Update command table to include new commands (stats, log, auto)
+- **cli**: Remove stale demo reference from README
+
 ## [0.5.2] - 2026-03-28
 
 ### Features

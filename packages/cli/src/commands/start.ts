@@ -70,7 +70,7 @@ async function loadConfig(cwd: string): Promise<Config | null> {
 }
 
 export const startCommand = new Command('start')
-  .description('Create worktree from issue and start Claude session (TDD mode by default)')
+  .description('Start a Claude session for a GitHub issue (isolated worktree + TDD)')
   .argument('<issue>', 'Issue number, GitHub URL, or task name')
   .option('-p, --prompt <prompt>', 'Initial prompt for Claude')
   .option('--no-session', 'Create worktree without starting Claude')
