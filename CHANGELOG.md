@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.4] - 2026-03-28
+
+### Documentation
+
+- **root**: Update root README - remove stale demo refs, add stats/log/auto to command table, strengthen comparison table
+- **root**: Add monitoring commands (ct log, ct stats) to Quick Start section
+- **root**: Rename "Bustercall" section to "Batch Processing" with ct auto/batch distinction
+- **cli**: Sync Korean README (README.ko.md) with new English version
+- **cli**: Sync Japanese README (README.ja.md) with new English version
+- **cli**: Sync Chinese README (README.zh.md) with new English version
+
 ## [0.5.3] - 2026-03-28
 
 ### Features
