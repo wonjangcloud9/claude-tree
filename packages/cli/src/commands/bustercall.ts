@@ -20,6 +20,18 @@ const execAsync = promisify(exec);
 
 const CONFIG_DIR = '.claudetree';
 
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const sec = Math.floor(ms / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  const remainSec = sec % 60;
+  if (min < 60) return `${min}m ${remainSec}s`;
+  const hours = Math.floor(min / 60);
+  const remainMin = min % 60;
+  return `${hours}h ${remainMin}m`;
+}
+
 interface BustercallOptions {
   label?: string;
   limit: number;
@@ -30,6 +42,8 @@ interface BustercallOptions {
   exclude?: string;
   sequential: boolean;
   conflictLabels?: string;
+  retry: number;
+  tag?: string[];
 }
 
 interface Config {
@@ -57,11 +71,17 @@ async function loadConfig(cwd: string): Promise<Config | null> {
 
 async function startSession(
   issueNumber: number,
-  options: { template?: string; cwd: string }
+  options: { template?: string; cwd: string; retry?: number; tags?: string[] }
 ): Promise<void> {
   const args = ['start', String(issueNumber)];
   if (options.template) {
     args.push('--template', options.template);
+  }
+  if (options.retry && options.retry > 0) {
+    args.push('--retry', String(options.retry));
+  }
+  if (options.tags?.length) {
+    args.push('--tag', ...options.tags);
   }
 
   const proc = spawn('claudetree', args, {
@@ -130,6 +150,8 @@ export const bustercallCommand = new Command('bustercall')
   .option('--dry-run', 'Show target issues without starting', false)
   .option('-S, --sequential', 'Force sequential execution (no parallel)', false)
   .option('--conflict-labels <labels>', 'Labels that indicate potential conflicts (comma-separated)')
+  .option('--retry <n>', 'Auto-retry failed sessions (default: 0)', '0')
+  .option('--tag <tags...>', 'Tags for sessions started by this bustercall')
   .action(async (options: BustercallOptions) => {
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
@@ -250,6 +272,8 @@ export const bustercallCommand = new Command('bustercall')
       console.log('\x1b[33m   These will run sequentially to avoid merge conflicts.\x1b[0m\n');
     }
 
+    const startTime = Date.now();
+
     // Determine effective parallel limit
     // If sequential mode or all issues are conflicting, run one at a time
     const effectiveParallel = options.sequential ? 1 : parseInt(options.parallel as unknown as string, 10);
@@ -302,6 +326,8 @@ export const bustercallCommand = new Command('bustercall')
         await startSession(item.issue.number, {
           template: options.template,
           cwd,
+          retry: options.retry,
+          tags: options.tag,
         });
         await updateItemStatus(itemIndex, 'completed');
       } catch (err) {
@@ -395,11 +421,43 @@ export const bustercallCommand = new Command('bustercall')
       await Promise.all(promises);
     }
 
-    // Final status
-    console.log('\n=== Bustercall Complete ===');
+    // Final summary report
+    const endTime = Date.now();
+    const totalDuration = endTime - startTime;
     const completed = items.filter((i) => i.status === 'completed').length;
     const failed = items.filter((i) => i.status === 'failed').length;
-    console.log(`Completed: ${completed}, Failed: ${failed}`);
+    const pending = items.filter((i) => i.status === 'pending').length;
+    const successRate = items.length > 0 ? Math.round((completed / items.length) * 100) : 0;
+
+    console.log('\n\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');
+    console.log('\x1b[36m║           Bustercall Summary             ║\x1b[0m');
+    console.log('\x1b[36m╚══════════════════════════════════════════╝\x1b[0m\n');
+
+    console.log(`  Total issues:   ${items.length} (${safe.length} safe, ${conflicting.length} conflicting)`);
+    console.log(`  \x1b[32mCompleted:\x1b[0m      ${completed}`);
+    console.log(`  \x1b[31mFailed:\x1b[0m         ${failed}`);
+    if (pending > 0) {
+      console.log(`  \x1b[33mPending:\x1b[0m        ${pending}`);
+    }
+    console.log(`  Success rate:   ${successRate}%`);
+    console.log(`  Duration:       ${formatDuration(totalDuration)}`);
+    console.log(`  Parallelism:    ${effectiveParallel}`);
+    if (options.retry > 0) {
+      console.log(`  Retry:          ${options.retry}x`);
+    }
+
+    // Show failed issues detail
+    const failedItems = items.filter((i) => i.status === 'failed');
+    if (failedItems.length > 0) {
+      console.log('\n  \x1b[31mFailed Issues:\x1b[0m');
+      for (const item of failedItems) {
+        const title = truncate(item.issue.title, 40);
+        console.log(`    #${item.issue.number} - ${title}`);
+        if (item.error) {
+          console.log(`      \x1b[90m${item.error}\x1b[0m`);
+        }
+      }
+    }
 
     // Send Slack notification
     if (config.slack?.webhookUrl) {
@@ -411,9 +469,9 @@ export const bustercallCommand = new Command('bustercall')
           error: item.error,
         }))
       );
-      console.log('\nSlack notification sent.');
+      console.log('\n  Slack notification sent.');
     }
 
-    console.log('\nView all sessions: claudetree status');
-    console.log('Open dashboard: claudetree web');
+    console.log('\n  View all sessions: \x1b[36mct status\x1b[0m');
+    console.log('  Open dashboard:    \x1b[36mct web\x1b[0m\n');
   });
