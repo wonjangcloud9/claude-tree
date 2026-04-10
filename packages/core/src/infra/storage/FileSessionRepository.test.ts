@@ -36,6 +36,7 @@ describe('FileSessionRepository', () => {
     progress: null,
     retryCount: 0,
     lastError: null,
+    tags: [],
     ...overrides,
   });
 

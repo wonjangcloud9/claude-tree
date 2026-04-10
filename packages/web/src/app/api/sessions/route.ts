@@ -60,6 +60,7 @@ export async function GET() {
           progress: null,
           retryCount: 0,
           lastError: null,
+          tags: [],
         };
         sessions.push(newSession);
         hasChanges = true;

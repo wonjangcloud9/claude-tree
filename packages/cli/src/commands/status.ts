@@ -10,6 +10,7 @@ interface StatusOptions {
   json: boolean;
   watch: boolean;
   health: boolean;
+  tag?: string[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -72,6 +73,7 @@ export const statusCommand = new Command('status')
   .option('--json', 'Output as JSON', false)
   .option('-w, --watch', 'Watch mode with real-time updates', false)
   .option('--health', 'Check process health and mark zombie sessions as failed', false)
+  .option('--tag <tags...>', 'Filter sessions by tag')
   .action(async (options: StatusOptions) => {
     const cwd = process.cwd();
     const configDir = join(cwd, CONFIG_DIR);
@@ -86,7 +88,15 @@ export const statusCommand = new Command('status')
     const sessionRepo = new FileSessionRepository(configDir);
 
     const displayStatus = async () => {
-      const sessions = await sessionRepo.findAll();
+      let sessions = await sessionRepo.findAll();
+
+      // Filter by tags if specified
+      if (options.tag && options.tag.length > 0) {
+        const filterTags = new Set(options.tag);
+        sessions = sessions.filter(
+          (s) => s.tags?.some((t: string) => filterTags.has(t)),
+        );
+      }
 
       if (options.json) {
         console.log(JSON.stringify(sessions, null, 2));
@@ -110,6 +120,7 @@ export const statusCommand = new Command('status')
         const color = STATUS_COLORS[session.status] ?? '';
         const statusStr = `${color}${session.status}${RESET}`;
         const issueStr = session.issueNumber ? ` (Issue #${session.issueNumber})` : '';
+        const tagsStr = session.tags?.length ? ` [${session.tags.join(', ')}]` : '';
 
         // Health check for running sessions
         let healthIndicator = '';
@@ -130,7 +141,7 @@ export const statusCommand = new Command('status')
           }
         }
 
-        console.log(`  ${session.id.slice(0, 8)} - ${statusStr}${issueStr}${healthIndicator}`);
+        console.log(`  ${session.id.slice(0, 8)} - ${statusStr}${issueStr}${tagsStr}${healthIndicator}`);
         console.log(`    Worktree: ${session.worktreeId.slice(0, 8)}`);
         if (session.prompt) {
           const truncatedPrompt = session.prompt.length > 50

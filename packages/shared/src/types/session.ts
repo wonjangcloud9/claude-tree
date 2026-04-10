@@ -48,6 +48,8 @@ export interface Session {
   // Retry tracking
   retryCount: number;
   lastError: string | null;
+  // Tags for filtering and organization
+  tags: string[];
 }
 
 export interface CreateSessionInput {

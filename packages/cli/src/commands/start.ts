@@ -49,6 +49,7 @@ interface StartOptions {
   testCommand?: string;
   retry?: string;
   retryDelay?: string;
+  tag?: string[];
 }
 
 interface Config {
@@ -92,6 +93,7 @@ export const startCommand = new Command('start')
   .option('--test-command <cmd>', 'Custom test command (default: pnpm test)')
   .option('--retry <n>', 'Auto-retry on session failure (default: 0, no retry)')
   .option('--retry-delay <ms>', 'Base delay between retries in ms (default: 5000)')
+  .option('--tag <tags...>', 'Tags for session organization and filtering')
   .action(async (issue: string, options: StartOptions) => {
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
@@ -224,6 +226,7 @@ export const startCommand = new Command('start')
         },
         retryCount: 0,
         lastError: null,
+        tags: options.tag ?? [],
       };
 
       await sessionRepo.save(session);
