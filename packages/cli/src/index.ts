@@ -18,6 +18,7 @@ import { startCommand } from './commands/start.js';
 import { statsCommand } from './commands/stats.js';
 import { statusCommand } from './commands/status.js';
 import { stopCommand } from './commands/stop.js';
+import { summaryCommand } from './commands/summary.js';
 import { watchCommand } from './commands/watch.js';
 import { webCommand } from './commands/web.js';
 
@@ -42,6 +43,7 @@ program.addCommand(chainCommand);
 program.addCommand(configCommand);
 program.addCommand(exportCommand);
 program.addCommand(prCommand);
+program.addCommand(summaryCommand);
 program.addCommand(watchCommand);
 program.addCommand(webCommand);
 program.addCommand(listCommand);

@@ -66,7 +66,8 @@ describe('MCP Tools', () => {
     expect(tools.has('ct_bustercall')).toBe(true);
     expect(tools.has('ct_pr')).toBe(true);
     expect(tools.has('ct_config')).toBe(true);
-    expect(tools.size).toBe(10);
+    expect(tools.has('ct_summary')).toBe(true);
+    expect(tools.size).toBe(11);
   });
 
   describe('ct_sessions_list', () => {

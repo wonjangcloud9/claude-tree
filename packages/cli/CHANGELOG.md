@@ -1,5 +1,20 @@
 # @claudetree/cli
 
+## 0.11.0
+
+### Minor Changes
+
+- feat: ct summary, Discord notifications, MCP ct_summary tool
+
+  - New ct summary command with text/markdown/JSON output, time/tag filtering
+  - New DiscordNotifier for webhook notifications (session + batch)
+  - MCP server now has 11 tools including ct_summary
+
+### Patch Changes
+
+- Updated dependencies
+  - @claudetree/core@0.8.0
+
 ## 0.10.0
 
 ### Minor Changes

@@ -4,6 +4,7 @@ export * from './storage/index.js';
 export * from './websocket/index.js';
 export * from './github/index.js';
 export * from './slack/index.js';
+export * from './discord/index.js';
 export * from './logger/index.js';
 export * from './validation/index.js';
 export * from './ai/index.js';
