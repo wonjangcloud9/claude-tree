@@ -7,10 +7,14 @@ import type { Session } from '@claudetree/shared';
 // Create mock findAll that can be controlled per test
 const mockFindAll = vi.fn();
 
-// Mock FileSessionRepository
+// Mock FileSessionRepository and ClaudeSessionAdapter
 vi.mock('@claudetree/core', () => ({
   FileSessionRepository: vi.fn().mockImplementation(() => ({
     findAll: mockFindAll,
+    save: vi.fn(),
+  })),
+  ClaudeSessionAdapter: vi.fn().mockImplementation(() => ({
+    isProcessAlive: vi.fn().mockReturnValue(false),
   })),
 }));
 
