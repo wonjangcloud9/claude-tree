@@ -1,5 +1,18 @@
 # @claudetree/cli
 
+## 0.8.0
+
+### Minor Changes
+
+- feat: major bustercall enhancements - summary report, progress bar, retry, resume
+
+  - Detailed completion summary with success rate, duration, failed issue details
+  - Visual progress bar with percentage and ETA estimation
+  - Per-item elapsed time tracking (startedAt/completedAt)
+  - --retry flag for automatic session retry with exponential backoff
+  - --tag flag for tagging all sessions in a bustercall run
+  - Resume support: automatically skips issues with active/completed sessions
+
 ## 0.7.0
 
 ### Minor Changes

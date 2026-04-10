@@ -168,7 +168,7 @@ describe('SessionRetryManager', () => {
 
       // 1 error event + 1 retry notification event
       expect(eventRepo.append).toHaveBeenCalledTimes(2);
-      const errorCall = vi.mocked(eventRepo.append).mock.calls[0][0];
+      const errorCall = vi.mocked(eventRepo.append).mock.calls[0]![0];
       expect(errorCall.type).toBe('error');
       expect(errorCall.content).toContain('err1');
     });
