@@ -265,6 +265,53 @@ export function registerTools(server: McpServer): void {
   );
 
   // ──────────────────────────────────────
+  // ct_bustercall - Auto-fetch and process issues
+  // ──────────────────────────────────────
+  server.registerTool(
+    'ct_bustercall',
+    {
+      description:
+        'Auto-fetch open GitHub issues, detect conflicts, and start parallel Claude sessions (bustercall/auto)',
+      inputSchema: {
+        label: z.string().optional().describe('Filter by GitHub label'),
+        limit: z.number().min(1).max(50).optional().describe('Max issues to process (default: 10)'),
+        parallel: z.number().min(1).max(10).optional().describe('Parallel session count (default: 3)'),
+        template: z
+          .enum(['bugfix', 'feature', 'refactor', 'review', 'docs'])
+          .optional()
+          .describe('Session template'),
+        dryRun: z.boolean().optional().describe('Show plan without executing'),
+        retry: z.number().min(0).max(5).optional().describe('Auto-retry failed sessions'),
+        sequential: z.boolean().optional().describe('Force sequential execution'),
+        tags: z.array(z.string()).optional().describe('Tags for sessions'),
+      },
+    },
+    async ({ label, limit, parallel, template, dryRun, retry, sequential, tags }) => {
+      const args = ['auto'];
+      if (label) args.push('--label', label);
+      if (limit) args.push('--limit', String(limit));
+      if (parallel) args.push('--parallel', String(parallel));
+      if (template) args.push('--template', template);
+      if (dryRun) args.push('--dry-run');
+      if (retry) args.push('--retry', String(retry));
+      if (sequential) args.push('--sequential');
+      if (tags?.length) args.push('--tag', ...tags);
+
+      const proc = spawn('claudetree', args, {
+        cwd,
+        stdio: 'ignore',
+        detached: true,
+      });
+      proc.unref();
+
+      const mode = dryRun ? 'Dry run' : 'Bustercall';
+      return textResult(
+        `${mode} started (PID: ${proc.pid ?? 'unknown'}).\nLabel: ${label ?? 'all'}, Limit: ${limit ?? 10}, Parallel: ${parallel ?? 3}\nUse ct_sessions_list to monitor progress.`,
+      );
+    },
+  );
+
+  // ──────────────────────────────────────
   // ct_stop - Stop a running session
   // ──────────────────────────────────────
   server.registerTool(
