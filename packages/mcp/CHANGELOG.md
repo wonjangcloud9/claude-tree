@@ -1,5 +1,21 @@
 # @claudetree/mcp
 
+## 0.11.2
+
+### Patch Changes
+
+- feat: vitest 3→4 major upgrade, ct diff, ConcurrencyGuard, doctor enhancements
+
+  - Major upgrade: vitest 3.2.4 → 4.1.4, @vitest/coverage-v8 4.1.4
+  - All test mocks migrated to vitest 4 class syntax
+  - New ct diff command for viewing session worktree changes
+  - ConcurrencyGuard for global session limit enforcement
+  - Doctor: config validation + disk space check (9 checks)
+
+- Updated dependencies
+  - @claudetree/core@0.10.0
+  - @claudetree/shared@0.7.1
+
 ## 0.11.1
 
 ### Patch Changes
