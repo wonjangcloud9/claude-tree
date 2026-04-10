@@ -1,28 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createOrFindWorktree } from './createWorktree.js';
-import { GitWorktreeAdapter } from '@claudetree/core';
 
 // Mock GitWorktreeAdapter
+const mockList = vi.fn();
+const mockCreate = vi.fn();
+
 vi.mock('@claudetree/core', async () => {
   const actual = await vi.importActual('@claudetree/core');
   return {
     ...actual,
-    GitWorktreeAdapter: vi.fn().mockImplementation(() => ({
-      list: vi.fn().mockResolvedValue([
-        { path: '/worktrees/existing-branch', branch: 'existing-branch' },
-      ]),
-      create: vi.fn().mockImplementation(async (opts: { path: string; branch: string; issueNumber?: number }) => ({
-        id: 'mock-uuid-123',
-        path: opts.path,
-        branch: opts.branch,
-      })),
-    })),
+    GitWorktreeAdapter: class {
+      list = mockList;
+      create = mockCreate;
+    },
   };
 });
 
 describe('createOrFindWorktree', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockList.mockResolvedValue([
+      { path: '/worktrees/existing-branch', branch: 'existing-branch' },
+    ]);
+    mockCreate.mockImplementation(async (opts: { path: string; branch: string; issueNumber?: number }) => ({
+      id: 'mock-uuid-123',
+      path: opts.path,
+      branch: opts.branch,
+    }));
   });
 
   describe('existing worktree', () => {
@@ -77,10 +81,8 @@ describe('createOrFindWorktree', () => {
 
   describe('error handling', () => {
     it('should throw error when create fails', async () => {
-      vi.mocked(GitWorktreeAdapter).mockImplementationOnce(() => ({
-        list: vi.fn().mockResolvedValue([]),
-        create: vi.fn().mockRejectedValue(new Error('Git error: branch already exists')),
-      } as unknown as GitWorktreeAdapter));
+      mockList.mockResolvedValue([]);
+      mockCreate.mockRejectedValue(new Error('Git error: branch already exists'));
 
       await expect(
         createOrFindWorktree({

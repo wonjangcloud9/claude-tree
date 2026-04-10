@@ -2,33 +2,25 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { listCommand } from './list.js';
 
 // Mock GitWorktreeAdapter
-vi.mock('@claudetree/core', () => ({
-  GitWorktreeAdapter: vi.fn().mockImplementation(() => ({
-    list: vi.fn(),
-  })),
-}));
+const mockList = vi.fn();
 
-import { GitWorktreeAdapter } from '@claudetree/core';
+vi.mock('@claudetree/core', () => ({
+  GitWorktreeAdapter: class {
+    list = mockList;
+  },
+}));
 
 describe('listCommand', () => {
   let originalExit: typeof process.exit;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-  let mockList: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     originalExit = process.exit;
     process.exit = vi.fn() as never;
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    mockList = vi.fn();
-    vi.mocked(GitWorktreeAdapter).mockImplementation(
-      () =>
-        ({
-          list: mockList,
-        }) as unknown as InstanceType<typeof GitWorktreeAdapter>
-    );
+    mockList.mockReset();
   });
 
   afterEach(() => {

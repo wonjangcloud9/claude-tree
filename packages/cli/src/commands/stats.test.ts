@@ -7,9 +7,9 @@ import type { Session } from '@claudetree/shared';
 const mockFindAll = vi.fn();
 
 vi.mock('@claudetree/core', () => ({
-  FileSessionRepository: vi.fn().mockImplementation(() => ({
-    findAll: mockFindAll,
-  })),
+  FileSessionRepository: class {
+    findAll = mockFindAll;
+  },
 }));
 
 import { statsCommand } from './stats.js';

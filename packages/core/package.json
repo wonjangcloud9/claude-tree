@@ -43,7 +43,7 @@
     "@types/debug": "^4.1.13",
     "@types/ws": "^8.18.1",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.4",
     "yaml": "^2.8.3"
   }
 }

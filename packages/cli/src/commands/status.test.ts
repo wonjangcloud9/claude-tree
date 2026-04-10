@@ -9,13 +9,13 @@ const mockFindAll = vi.fn();
 
 // Mock FileSessionRepository and ClaudeSessionAdapter
 vi.mock('@claudetree/core', () => ({
-  FileSessionRepository: vi.fn().mockImplementation(() => ({
-    findAll: mockFindAll,
-    save: vi.fn(),
-  })),
-  ClaudeSessionAdapter: vi.fn().mockImplementation(() => ({
-    isProcessAlive: vi.fn().mockReturnValue(false),
-  })),
+  FileSessionRepository: class {
+    findAll = mockFindAll;
+    save = vi.fn();
+  },
+  ClaudeSessionAdapter: class {
+    isProcessAlive = vi.fn().mockReturnValue(false);
+  },
 }));
 
 // Import after mock

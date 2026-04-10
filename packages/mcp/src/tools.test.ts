@@ -6,16 +6,16 @@ const mockFindBySessionId = vi.fn();
 const mockIsProcessAlive = vi.fn();
 
 vi.mock('@claudetree/core', () => ({
-  FileSessionRepository: vi.fn().mockImplementation(() => ({
-    findAll: mockFindAll,
-    save: mockSave,
-  })),
-  FileEventRepository: vi.fn().mockImplementation(() => ({
-    findBySessionId: mockFindBySessionId,
-  })),
-  ClaudeSessionAdapter: vi.fn().mockImplementation(() => ({
-    isProcessAlive: mockIsProcessAlive,
-  })),
+  FileSessionRepository: class {
+    findAll = mockFindAll;
+    save = mockSave;
+  },
+  FileEventRepository: class {
+    findBySessionId = mockFindBySessionId;
+  },
+  ClaudeSessionAdapter: class {
+    isProcessAlive = mockIsProcessAlive;
+  },
 }));
 
 vi.mock('node:child_process', () => ({

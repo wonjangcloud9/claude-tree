@@ -57,7 +57,7 @@ describe('statusDisplay', () => {
 
       printStatus(items);
 
-      const output = consoleLogSpy.mock.calls.map(c => c[0]).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n');
       expect(output).toContain('#1');
       expect(output).toContain('First issue');
     });
@@ -72,7 +72,7 @@ describe('statusDisplay', () => {
 
       printStatus(items);
 
-      const output = consoleLogSpy.mock.calls.map(c => c[0]).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n');
       expect(output).toContain('#2');
     });
 
@@ -86,7 +86,7 @@ describe('statusDisplay', () => {
 
       printStatus(items);
 
-      const output = consoleLogSpy.mock.calls.map(c => c[0]).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n');
       expect(output).toContain('#3');
     });
 
@@ -101,7 +101,7 @@ describe('statusDisplay', () => {
 
       printStatus(items);
 
-      const output = consoleLogSpy.mock.calls.map(c => c[0]).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n');
       expect(output).toContain('#4');
       expect(output).toContain('Something went wrong');
     });
@@ -117,7 +117,7 @@ describe('statusDisplay', () => {
 
       printStatus(items);
 
-      const output = consoleLogSpy.mock.calls.map(c => c[0]).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n');
       expect(output).toContain('2');
       expect(output).toContain('5');
       expect(output).toContain('running');

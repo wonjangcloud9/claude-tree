@@ -21,15 +21,15 @@ const mockSessionFindAll = vi.fn();
 const mockSessionDelete = vi.fn();
 
 vi.mock('@claudetree/core', () => ({
-  GitWorktreeAdapter: vi.fn().mockImplementation(() => ({
-    list: mockWorktreeList,
-    remove: mockWorktreeRemove,
-    prune: mockWorktreePrune,
-  })),
-  FileSessionRepository: vi.fn().mockImplementation(() => ({
-    findAll: mockSessionFindAll,
-    delete: mockSessionDelete,
-  })),
+  GitWorktreeAdapter: class {
+    list = mockWorktreeList;
+    remove = mockWorktreeRemove;
+    prune = mockWorktreePrune;
+  },
+  FileSessionRepository: class {
+    findAll = mockSessionFindAll;
+    delete = mockSessionDelete;
+  },
 }));
 
 import { cleanCommand } from './clean.js';
