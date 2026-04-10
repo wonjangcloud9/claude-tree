@@ -312,6 +312,43 @@ export function registerTools(server: McpServer): void {
   );
 
   // ──────────────────────────────────────
+  // ct_pr - Create PRs from sessions
+  // ──────────────────────────────────────
+  server.registerTool(
+    'ct_pr',
+    {
+      description:
+        'Create pull requests from completed claudetree sessions with auto-generated descriptions',
+      inputSchema: {
+        sessionId: z.string().optional().describe('Specific session ID (or creates for all completed)'),
+        base: z.string().optional().describe('Base branch (default: develop)'),
+        dryRun: z.boolean().optional().describe('Preview PR without creating'),
+        all: z.boolean().optional().describe('Create PRs for all completed sessions'),
+      },
+    },
+    async ({ sessionId, base, dryRun, all }) => {
+      const args = ['pr'];
+      if (sessionId) args.push('--session', sessionId);
+      if (base) args.push('--base', base);
+      if (dryRun) args.push('--dry-run');
+      if (all) args.push('--all');
+
+      const proc = spawn('claudetree', args, {
+        cwd,
+        stdio: 'ignore',
+        detached: true,
+      });
+      proc.unref();
+
+      const target = sessionId ? `session ${sessionId}` : 'all completed sessions';
+      const mode = dryRun ? 'PR preview' : 'PR creation';
+      return textResult(
+        `${mode} started for ${target} (PID: ${proc.pid ?? 'unknown'}).\nBase branch: ${base ?? 'develop'}`,
+      );
+    },
+  );
+
+  // ──────────────────────────────────────
   // ct_stop - Stop a running session
   // ──────────────────────────────────────
   server.registerTool(

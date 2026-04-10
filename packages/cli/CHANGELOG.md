@@ -1,5 +1,15 @@
 # @claudetree/cli
 
+## 0.9.0
+
+### Minor Changes
+
+- feat: add ct pr command and MCP ct_pr tool
+
+  Auto-create quality pull requests from completed sessions with
+  categorized commits, issue linking, session metrics, and diff stats.
+  MCP server now exposes 10 tools including ct_pr.
+
 ## 0.8.1
 
 ### Patch Changes
