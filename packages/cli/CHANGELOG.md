@@ -1,5 +1,14 @@
 # @claudetree/cli
 
+## 0.8.1
+
+### Patch Changes
+
+- feat: budget alerts and MCP bustercall tool
+
+  - Progressive budget alerts at 50%, 75%, 90% of --max-cost in ct start
+  - New ct_bustercall MCP tool for AI-driven issue orchestration (9 tools total)
+
 ## 0.8.0
 
 ### Minor Changes
