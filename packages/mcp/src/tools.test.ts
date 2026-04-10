@@ -126,6 +126,7 @@ describe('MCP Tools', () => {
           progress: null,
           retryCount: 0,
           lastError: null,
+          tags: [],
           osProcessId: null,
         },
       ]);

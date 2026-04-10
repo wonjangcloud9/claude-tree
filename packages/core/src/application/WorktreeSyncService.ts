@@ -83,6 +83,7 @@ export class WorktreeSyncService {
       // Retry tracking
       retryCount: 0,
       lastError: null,
+      tags: [],
     };
   }
 }

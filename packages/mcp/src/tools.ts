@@ -51,16 +51,24 @@ export function registerTools(server: McpServer): void {
           .enum(['all', 'running', 'completed', 'failed', 'paused', 'pending'])
           .optional()
           .describe('Filter by session status (default: all)'),
+        tag: z
+          .string()
+          .optional()
+          .describe('Filter sessions by tag'),
       },
     },
-    async ({ status }) => {
+    async ({ status, tag }) => {
       const sessionRepo = new FileSessionRepository(join(cwd, CONFIG_DIR));
       const sessions = await sessionRepo.findAll();
 
-      const filtered =
+      let filtered =
         !status || status === 'all'
           ? sessions
           : sessions.filter((s) => s.status === status);
+
+      if (tag) {
+        filtered = filtered.filter((s) => s.tags?.includes(tag));
+      }
 
       if (filtered.length === 0) {
         return textResult('No sessions found.');
@@ -70,7 +78,8 @@ export function registerTools(server: McpServer): void {
         const issue = s.issueNumber ? `#${s.issueNumber}` : 'N/A';
         const cost = s.usage ? `$${s.usage.totalCostUsd.toFixed(4)}` : '-';
         const retry = s.retryCount > 0 ? ` (retries: ${s.retryCount})` : '';
-        return `${s.id.slice(0, 8)} | ${s.status} | Issue ${issue} | Cost ${cost}${retry}`;
+        const tags = s.tags?.length ? ` [${s.tags.join(', ')}]` : '';
+        return `${s.id.slice(0, 8)} | ${s.status} | Issue ${issue} | Cost ${cost}${retry}${tags}`;
       });
 
       return textResult(
@@ -125,6 +134,10 @@ export function registerTools(server: McpServer): void {
           `Step: ${session.progress.currentStep}`,
           `Completed: ${session.progress.completedSteps.join(', ') || 'none'}`,
         );
+      }
+
+      if (session.tags?.length) {
+        detail.push(`Tags: ${session.tags.join(', ')}`);
       }
 
       if (session.retryCount > 0) {
@@ -224,14 +237,19 @@ export function registerTools(server: McpServer): void {
           .boolean()
           .optional()
           .describe('Disable TDD mode'),
+        tags: z
+          .array(z.string())
+          .optional()
+          .describe('Tags for session organization'),
       },
     },
-    async ({ issue, template, maxCost, retry, noTdd }) => {
+    async ({ issue, template, maxCost, retry, noTdd, tags }) => {
       const args = ['start', issue];
       if (template) args.push('--template', template);
       if (maxCost) args.push('--max-cost', String(maxCost));
       if (retry) args.push('--retry', String(retry));
       if (noTdd) args.push('--no-tdd');
+      if (tags?.length) args.push('--tag', ...tags);
 
       const proc = spawn('claudetree', args, {
         cwd,

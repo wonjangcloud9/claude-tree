@@ -1,5 +1,18 @@
 # @claudetree/core
 
+## 0.6.1
+
+### Patch Changes
+
+- feat: add session tagging for organization and filtering
+
+  - Add tags field to Session type
+  - Add --tag flag to ct start and ct status
+  - Add tag filtering to MCP ct_sessions_list and ct_start tools
+
+- Updated dependencies
+  - @claudetree/shared@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes

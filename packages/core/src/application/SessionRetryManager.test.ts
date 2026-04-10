@@ -23,6 +23,7 @@ function createMockSession(overrides?: Partial<Session>): Session {
     progress: null,
     retryCount: 0,
     lastError: null,
+    tags: [],
     ...overrides,
   };
 }
