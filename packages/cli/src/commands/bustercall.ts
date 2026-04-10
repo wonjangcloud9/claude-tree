@@ -310,7 +310,7 @@ export const bustercallCommand = new Command('bustercall')
           item.status = status;
           if (error) item.error = error;
         }
-        printStatus(items);
+        printStatus(items, startTime);
       } finally {
         release();
       }
@@ -320,6 +320,7 @@ export const bustercallCommand = new Command('bustercall')
       const item = items[itemIndex];
       if (!item) return;
 
+      item.startedAt = Date.now();
       await updateItemStatus(itemIndex, 'running');
 
       try {
@@ -329,8 +330,10 @@ export const bustercallCommand = new Command('bustercall')
           retry: options.retry,
           tags: options.tag,
         });
+        item.completedAt = Date.now();
         await updateItemStatus(itemIndex, 'completed');
       } catch (err) {
+        item.completedAt = Date.now();
         await updateItemStatus(itemIndex, 'failed', err instanceof Error ? err.message : 'Unknown error');
       }
 

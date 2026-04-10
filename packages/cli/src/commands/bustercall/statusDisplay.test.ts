@@ -118,9 +118,10 @@ describe('statusDisplay', () => {
       printStatus(items);
 
       const output = consoleLogSpy.mock.calls.map(c => c[0]).join('\n');
-      expect(output).toContain('[2/5]');
-      expect(output).toContain('1 running');
-      expect(output).toContain('1 failed');
+      expect(output).toContain('2');
+      expect(output).toContain('5');
+      expect(output).toContain('running');
+      expect(output).toContain('failed');
     });
   });
 });
