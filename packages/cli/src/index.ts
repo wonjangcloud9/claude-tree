@@ -17,6 +17,7 @@ import { startCommand } from './commands/start.js';
 import { statsCommand } from './commands/stats.js';
 import { statusCommand } from './commands/status.js';
 import { stopCommand } from './commands/stop.js';
+import { watchCommand } from './commands/watch.js';
 import { webCommand } from './commands/web.js';
 
 const require = createRequire(import.meta.url);
@@ -39,6 +40,7 @@ program.addCommand(bustercallCommand);
 program.addCommand(chainCommand);
 program.addCommand(configCommand);
 program.addCommand(exportCommand);
+program.addCommand(watchCommand);
 program.addCommand(webCommand);
 program.addCommand(listCommand);
 program.addCommand(cleanCommand);
