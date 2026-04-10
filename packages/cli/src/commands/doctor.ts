@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { execSync } from 'node:child_process';
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const CONFIG_DIR = '.claudetree';
@@ -137,6 +137,87 @@ async function checkAnthropicKey(): Promise<CheckResult> {
   };
 }
 
+async function checkConfigValidity(): Promise<CheckResult> {
+  const cwd = process.cwd();
+  const configPath = join(cwd, CONFIG_DIR, CONFIG_FILE);
+
+  try {
+    const content = await readFile(configPath, 'utf-8');
+    const config = JSON.parse(content);
+
+    const issues: string[] = [];
+
+    if (!config.worktreeDir) {
+      issues.push('Missing worktreeDir');
+    }
+    if (!config.github?.owner) {
+      issues.push('Missing github.owner');
+    }
+    if (!config.github?.repo) {
+      issues.push('Missing github.repo');
+    }
+
+    if (issues.length > 0) {
+      return {
+        name: 'Config Validation',
+        status: 'warn',
+        message: `Issues: ${issues.join(', ')}`,
+        fix: 'Run: ct config set github.owner <owner>',
+      };
+    }
+
+    const fields = [
+      `repo: ${config.github.owner}/${config.github.repo}`,
+      config.github.token ? 'token: set' : 'token: missing',
+      config.slack?.webhookUrl ? 'slack: configured' : '',
+      config.discord?.webhookUrl ? 'discord: configured' : '',
+    ].filter(Boolean);
+
+    return {
+      name: 'Config Validation',
+      status: 'pass',
+      message: fields.join(' | '),
+    };
+  } catch {
+    return {
+      name: 'Config Validation',
+      status: 'warn',
+      message: 'Could not read config (run ct init first)',
+    };
+  }
+}
+
+async function checkDiskSpace(): Promise<CheckResult> {
+  try {
+    const cwd = process.cwd();
+    const stdout = execSync(`df -h "${cwd}" | tail -1`, {
+      stdio: 'pipe',
+      encoding: 'utf-8',
+    });
+    const parts = stdout.trim().split(/\s+/);
+    const available = parts[3] ?? 'unknown';
+    const usePercent = parts[4] ?? 'unknown';
+
+    const percentNum = parseInt(usePercent, 10);
+    if (percentNum > 90) {
+      return {
+        name: 'Disk Space',
+        status: 'warn',
+        message: `${available} available (${usePercent} used) - low disk space`,
+        fix: 'Free disk space or run: ct clean',
+      };
+    }
+
+    return {
+      name: 'Disk Space',
+      status: 'pass',
+      message: `${available} available (${usePercent} used)`,
+    };
+  } catch {
+    return { name: 'Disk Space', status: 'pass', message: 'Check skipped' };
+  }
+}
+
 function printResult(result: CheckResult): void {
   const icon = ICONS[result.status];
   console.log(`  ${icon} ${COLORS.bold}${result.name}${COLORS.reset}`);
@@ -161,6 +242,8 @@ export const doctorCommand = new Command('doctor')
       checkGhAuth,
       checkAnthropicKey,
       checkClaudetreeInit,
+      checkConfigValidity,
+      checkDiskSpace,
     ];
 
     const results: CheckResult[] = [];
