@@ -1,5 +1,19 @@
 # @claudetree/cli
 
+## 0.10.0
+
+### Minor Changes
+
+- feat: session context memory for cross-session continuity
+
+  New SessionContextStore persists session context (commits, files, decisions)
+  and auto-injects prior context when starting sessions for the same issue.
+
+### Patch Changes
+
+- Updated dependencies
+  - @claudetree/core@0.7.0
+
 ## 0.9.0
 
 ### Minor Changes

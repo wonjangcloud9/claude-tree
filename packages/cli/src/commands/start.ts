@@ -13,6 +13,7 @@ import {
   ValidationGateRunner,
   generateAIReviewSummary,
   SessionRetryManager,
+  SessionContextStore,
   type ClaudeOutputEvent,
 } from '@claudetree/core';
 import type {
@@ -252,6 +253,17 @@ export const startCommand = new Command('start')
 
       // Build prompt using extracted module
       const effectiveSkill = template?.skill || options.skill;
+      // Load prior session context if available
+      const contextStore = new SessionContextStore(join(cwd, CONFIG_DIR));
+      let priorContext = null;
+      if (issueNumber) {
+        const ctx = await contextStore.findByIssue(issueNumber);
+        if (ctx) {
+          priorContext = ctx;
+          console.log(`  Prior context: loaded from session ${ctx.sessionId.slice(0, 8)}`);
+        }
+      }
+
       const prompt = buildPrompt({
         issueNumber,
         issueData,
@@ -260,6 +272,7 @@ export const startCommand = new Command('start')
         tddEnabled,
         template,
         customPrompt: options.prompt,
+        priorContext,
       });
 
       // Build system prompt using extracted module
@@ -604,6 +617,36 @@ export const startCommand = new Command('start')
         }
       } else if (!tddEnabled && session.status !== 'failed' && !budgetExceeded) {
         session.status = 'completed';
+      }
+
+      // Save session context for future sessions
+      if (session.status === 'completed' || session.status === 'failed') {
+        try {
+          const { exec: execCb } = await import('node:child_process');
+          const { promisify } = await import('node:util');
+          const execAsync = promisify(execCb);
+          const { stdout: commitLog } = await execAsync(
+            'git log --oneline -10 --pretty=format:"%s"',
+            { cwd: worktree.path },
+          );
+          const { stdout: diffFiles } = await execAsync(
+            'git diff --name-only HEAD~5 HEAD 2>/dev/null || echo ""',
+            { cwd: worktree.path },
+          );
+
+          await contextStore.save({
+            sessionId: session.id,
+            issueNumber,
+            branch: branchName,
+            completedAt: new Date().toISOString(),
+            commits: commitLog.split('\n').filter(Boolean),
+            filesChanged: diffFiles.split('\n').filter(Boolean),
+            decisions: [],
+            summary: `Session ${session.status}. ${session.usage ? `Cost: $${session.usage.totalCostUsd.toFixed(4)}` : ''}`,
+          });
+        } catch {
+          // Context saving is best-effort
+        }
       }
 
       // Generate AI Review Summary for completed sessions
