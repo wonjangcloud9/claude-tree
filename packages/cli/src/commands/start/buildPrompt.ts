@@ -1,5 +1,12 @@
 import type { Issue, SessionTemplate, TDDConfig } from '@claudetree/shared';
 
+export interface PriorContext {
+  summary: string;
+  commits: string[];
+  decisions: string[];
+  filesChanged: string[];
+}
+
 export interface BuildPromptOptions {
   issueNumber: number | null;
   issueData: Issue | null;
@@ -8,6 +15,7 @@ export interface BuildPromptOptions {
   tddEnabled: boolean;
   template?: SessionTemplate | null;
   customPrompt?: string;
+  priorContext?: PriorContext | null;
 }
 
 export interface BuildSystemPromptOptions {
@@ -60,6 +68,20 @@ IMPORTANT: Do NOT just analyze or suggest. Actually IMPLEMENT the solution.
 ${tddEnabled ? '\nStart with TDD - write a failing test first!' : ''}`;
   } else {
     prompt = `Working on ${branchName}. ${tddEnabled ? 'Start with TDD - write a failing test first!' : 'Implement any required changes.'}`;
+  }
+
+  // Inject prior session context if available
+  if (options.priorContext) {
+    const ctx = options.priorContext;
+    prompt += `\n\n## Prior Session Context
+A previous session worked on this issue/branch. Here's what was done:
+
+Summary: ${ctx.summary}
+Files changed: ${ctx.filesChanged.join(', ')}
+${ctx.decisions.length > 0 ? `Decisions: ${ctx.decisions.join('; ')}` : ''}
+Recent commits: ${ctx.commits.slice(0, 5).join(', ')}
+
+Build on this work. Don't repeat what's already done.`;
   }
 
   // Apply template prefix/suffix

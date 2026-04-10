@@ -3,3 +3,4 @@ export { FileEventRepository } from './FileEventRepository.js';
 export { FileToolApprovalRepository } from './FileToolApprovalRepository.js';
 export { FileCodeReviewRepository } from './FileCodeReviewRepository.js';
 export { TemplateLoader, DEFAULT_TEMPLATES } from './TemplateLoader.js';
+export { SessionContextStore, type SessionContext } from './SessionContextStore.js';
