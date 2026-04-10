@@ -34,6 +34,8 @@ describe('FileSessionRepository', () => {
     worktreePath: null,
     usage: null,
     progress: null,
+    retryCount: 0,
+    lastError: null,
     ...overrides,
   });
 

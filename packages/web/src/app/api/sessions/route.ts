@@ -58,6 +58,8 @@ export async function GET() {
           worktreePath: worktree.path,
           usage: null,
           progress: null,
+          retryCount: 0,
+          lastError: null,
         };
         sessions.push(newSession);
         hasChanges = true;

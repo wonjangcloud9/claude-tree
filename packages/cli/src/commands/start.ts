@@ -12,6 +12,7 @@ import {
   SlackNotifier,
   ValidationGateRunner,
   generateAIReviewSummary,
+  SessionRetryManager,
   type ClaudeOutputEvent,
 } from '@claudetree/core';
 import type {
@@ -20,7 +21,9 @@ import type {
   SessionTemplate,
   TDDConfig,
   TDDSessionState,
+  RetryConfig,
 } from '@claudetree/shared';
+import { DEFAULT_RETRY_CONFIG } from '@claudetree/shared';
 
 import { parseIssueInput } from './start/parseIssueInput.js';
 import { createOrFindWorktree } from './start/createWorktree.js';
@@ -44,6 +47,8 @@ interface StartOptions {
   maxRetries?: string;
   gates?: string;
   testCommand?: string;
+  retry?: string;
+  retryDelay?: string;
 }
 
 interface Config {
@@ -85,6 +90,8 @@ export const startCommand = new Command('start')
   .option('--max-retries <n>', 'Max retries per validation gate (default: 3)')
   .option('--gates <gates>', 'Validation gates: test,type,lint,build (default: test,type)')
   .option('--test-command <cmd>', 'Custom test command (default: pnpm test)')
+  .option('--retry <n>', 'Auto-retry on session failure (default: 0, no retry)')
+  .option('--retry-delay <ms>', 'Base delay between retries in ms (default: 5000)')
   .action(async (issue: string, options: StartOptions) => {
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
@@ -215,6 +222,8 @@ export const startCommand = new Command('start')
           completedSteps: [],
           startedAt: new Date(),
         },
+        retryCount: 0,
+        lastError: null,
       };
 
       await sessionRepo.save(session);
@@ -258,12 +267,24 @@ export const startCommand = new Command('start')
         template,
       });
 
+      // Retry configuration
+      const retryCount = parseInt(options.retry ?? '0', 10);
+      const retryConfig: RetryConfig = {
+        ...DEFAULT_RETRY_CONFIG,
+        maxRetries: retryCount,
+        baseDelayMs: parseInt(options.retryDelay ?? '5000', 10),
+      };
+      const retryManager = retryCount > 0 ? new SessionRetryManager(retryConfig) : null;
+
       console.log('\n\x1b[36m🚀 Starting Claude session...\x1b[0m');
       if (tddEnabled) {
         console.log('   Mode: \x1b[32mTDD\x1b[0m (Test-Driven Development)');
       }
       if (options.maxCost) {
         console.log(`   Budget: \x1b[33m$${options.maxCost.toFixed(2)}\x1b[0m`);
+      }
+      if (retryCount > 0) {
+        console.log(`   Retry: \x1b[33m${retryCount}x\x1b[0m (delay: ${retryConfig.baseDelayMs}ms, backoff: ${retryConfig.backoffMultiplier}x)`);
       }
 
       const eventRepo = new FileEventRepository(join(cwd, CONFIG_DIR));
@@ -449,6 +470,67 @@ export const startCommand = new Command('start')
       }
 
       if (timeoutChecker) clearInterval(timeoutChecker);
+
+      // Auto-retry on session failure (not timeout/budget)
+      if (
+        retryManager &&
+        session.status === 'failed' &&
+        !sessionTimedOut &&
+        !idleTimedOut &&
+        !budgetExceeded
+      ) {
+        const retryResult = await retryManager.executeWithRetry(
+          async () => {
+            console.log(`\n\x1b[33m[Retry]\x1b[0m Restarting Claude session (attempt ${session.retryCount + 2}/${retryConfig.maxRetries + 1})...\x1b[0m`);
+
+            const resumePrompt = session.claudeSessionId
+              ? 'Continue from where you left off. The previous session encountered an error.'
+              : prompt;
+
+            const retryResultInner = session.claudeSessionId
+              ? await claudeAdapter.resume(session.claudeSessionId, resumePrompt)
+              : await claudeAdapter.start({
+                  workingDir: worktree.path,
+                  prompt: resumePrompt,
+                  systemPrompt,
+                  allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
+                });
+
+            session.processId = retryResultInner.processId;
+            session.osProcessId = retryResultInner.osProcessId;
+            session.status = 'running';
+            session.updatedAt = new Date();
+            await sessionRepo.save(session);
+
+            let retrySuccess = false;
+            for await (const output of claudeAdapter.getOutput(retryResultInner.processId)) {
+              session.lastHeartbeat = new Date();
+
+              if (output.type === 'text') {
+                console.log(output.content);
+              } else if (output.type === 'tool_use') {
+                console.log(`\x1b[36m[Tool]\x1b[0m ${output.content}`);
+              } else if (output.type === 'error') {
+                console.error(`\x1b[31m[Error]\x1b[0m ${output.content}`);
+              } else if (output.type === 'done') {
+                retrySuccess = true;
+                if (output.content) session.claudeSessionId = output.content;
+                if (output.usage) session.usage = output.usage;
+              }
+            }
+
+            return { success: retrySuccess, error: retrySuccess ? undefined : 'Session exited without completion' };
+          },
+          { session, sessionRepo, eventRepo, retryConfig },
+        );
+
+        if (retryResult.success) {
+          session.status = 'running'; // will be set to completed below
+          console.log(`\x1b[32m[Retry]\x1b[0m Session recovered after ${retryResult.totalAttempts} attempt(s)`);
+        } else {
+          console.log(`\x1b[31m[Retry]\x1b[0m Session failed after ${retryResult.totalAttempts} attempt(s)`);
+        }
+      }
 
       if (tddEnabled && tddConfig && session.status !== 'failed' && !budgetExceeded) {
         console.log('\n\x1b[36m╔══════════════════════════════════════════╗\x1b[0m');

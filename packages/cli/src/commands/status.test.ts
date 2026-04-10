@@ -95,6 +95,8 @@ describe('statusCommand', () => {
         worktreePath: '/path/to/worktree',
         usage: null,
         progress: null,
+        retryCount: 0,
+        lastError: null,
         ...overrides,
       });
 

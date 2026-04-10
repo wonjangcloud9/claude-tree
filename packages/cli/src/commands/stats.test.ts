@@ -104,6 +104,8 @@ describe('statsCommand', () => {
         totalCostUsd: 1.25,
       },
       progress: null,
+      retryCount: 0,
+      lastError: null,
       ...overrides,
     });
 
