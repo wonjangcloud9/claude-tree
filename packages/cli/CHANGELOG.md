@@ -1,5 +1,20 @@
 # @claudetree/cli
 
+## 0.12.0
+
+### Minor Changes
+
+- feat: ct diff, ConcurrencyGuard, enhanced ct doctor
+
+  - New ct diff command to view session worktree changes with stat/full diff
+  - ConcurrencyGuard for global session limit enforcement
+  - Doctor now validates config fields and checks disk space (9 checks total)
+
+### Patch Changes
+
+- Updated dependencies
+  - @claudetree/core@0.9.0
+
 ## 0.11.0
 
 ### Minor Changes
