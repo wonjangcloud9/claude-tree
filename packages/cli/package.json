@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/cli",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "Issue-to-PR automation: parallel Claude Code sessions with cost tracking, batch processing & web dashboard",
   "type": "module",
   "bin": {

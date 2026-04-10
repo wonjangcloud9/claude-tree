@@ -12,6 +12,7 @@ import { exportCommand } from './commands/export.js';
 import { initCommand } from './commands/init.js';
 import { listCommand } from './commands/list.js';
 import { logCommand } from './commands/log.js';
+import { prCommand } from './commands/pr.js';
 import { resumeCommand } from './commands/resume.js';
 import { startCommand } from './commands/start.js';
 import { statsCommand } from './commands/stats.js';
@@ -40,6 +41,7 @@ program.addCommand(bustercallCommand);
 program.addCommand(chainCommand);
 program.addCommand(configCommand);
 program.addCommand(exportCommand);
+program.addCommand(prCommand);
 program.addCommand(watchCommand);
 program.addCommand(webCommand);
 program.addCommand(listCommand);
@@ -51,6 +53,7 @@ Quick Start:
   $ ct init                              # initialize in your project
   $ ct start <github-issue-url>          # fire and forget
   $ ct status                            # monitor progress
+  $ ct pr --all                          # create PRs for completed sessions
   $ ct stats                             # view cost analytics
 
 Docs: https://github.com/wonjangcloud9/claude-tree`);
