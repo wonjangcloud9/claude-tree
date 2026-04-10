@@ -16,41 +16,41 @@ const mockGateRunnerRunWithAutoRetry = vi.fn();
 
 // Mock @claudetree/core
 vi.mock('@claudetree/core', () => ({
-  GitWorktreeAdapter: vi.fn().mockImplementation(() => ({
-    list: mockWorktreeList,
-    create: mockWorktreeCreate,
-  })),
-  ClaudeSessionAdapter: vi.fn().mockImplementation(() => ({
-    isClaudeAvailable: mockIsClaudeAvailable,
-    start: mockClaudeStart,
-    getOutput: mockClaudeGetOutput,
-    on: mockClaudeOn,
-    stop: vi.fn(),
-  })),
-  FileSessionRepository: vi.fn().mockImplementation(() => ({
-    save: mockSessionSave,
-  })),
-  FileEventRepository: vi.fn().mockImplementation(() => ({
-    append: vi.fn(),
-  })),
-  FileToolApprovalRepository: vi.fn().mockImplementation(() => ({
-    save: vi.fn(),
-  })),
-  GitHubAdapter: vi.fn().mockImplementation(() => ({
-    parseIssueUrl: vi.fn(),
-    getIssue: vi.fn(),
-    generateBranchName: vi.fn(),
-  })),
-  TemplateLoader: vi.fn().mockImplementation(() => ({
-    load: mockTemplateLoad,
-  })),
+  GitWorktreeAdapter: class {
+    list = mockWorktreeList;
+    create = mockWorktreeCreate;
+  },
+  ClaudeSessionAdapter: class {
+    isClaudeAvailable = mockIsClaudeAvailable;
+    start = mockClaudeStart;
+    getOutput = mockClaudeGetOutput;
+    on = mockClaudeOn;
+    stop = vi.fn();
+  },
+  FileSessionRepository: class {
+    save = mockSessionSave;
+  },
+  FileEventRepository: class {
+    append = vi.fn();
+  },
+  FileToolApprovalRepository: class {
+    save = vi.fn();
+  },
+  GitHubAdapter: class {
+    parseIssueUrl = vi.fn();
+    getIssue = vi.fn();
+    generateBranchName = vi.fn();
+  },
+  TemplateLoader: class {
+    load = mockTemplateLoad;
+  },
   DEFAULT_TEMPLATES: {},
-  SlackNotifier: vi.fn().mockImplementation(() => ({
-    notifySession: vi.fn(),
-  })),
-  ValidationGateRunner: vi.fn().mockImplementation(() => ({
-    runWithAutoRetry: mockGateRunnerRunWithAutoRetry,
-  })),
+  SlackNotifier: class {
+    notifySession = vi.fn();
+  },
+  ValidationGateRunner: class {
+    runWithAutoRetry = mockGateRunnerRunWithAutoRetry;
+  },
 }));
 
 // Import after mocks
@@ -290,9 +290,9 @@ describe('startCommand', () => {
           '--no-session',
         ]);
 
-        const calls = consoleLogSpy.mock.calls.map((c) => c[0]);
+        const calls = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]);
         const hasTddHeader = calls.some(
-          (c) => typeof c === 'string' && c.includes('TDD Mode Session')
+          (c: unknown) => typeof c === 'string' && c.includes('TDD Mode Session')
         );
         expect(hasTddHeader).toBe(false);
       });

@@ -110,7 +110,7 @@ describe('chainDisplay', () => {
 
       printChainStatus(chain);
 
-      const output = consoleLogSpy.mock.calls.map((c) => c[0]).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n');
       expect(output).toContain('#1');
       expect(output).toContain('#2');
       expect(output).toContain('#3');
@@ -123,7 +123,7 @@ describe('chainDisplay', () => {
 
       printChainStatus(chain);
 
-      const output = consoleLogSpy.mock.calls.map((c) => c[0]).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n');
       expect(output).toContain('Build failed');
     });
 
@@ -136,7 +136,7 @@ describe('chainDisplay', () => {
 
       printChainStatus(chain);
 
-      const output = consoleLogSpy.mock.calls.map((c) => c[0]).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n');
       expect(output).toContain('[2/3]');
     });
   });

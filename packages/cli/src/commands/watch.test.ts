@@ -7,12 +7,12 @@ const mockListIssues = vi.fn();
 const mockFindAll = vi.fn();
 
 vi.mock('@claudetree/core', () => ({
-  GitHubAdapter: vi.fn().mockImplementation(() => ({
-    listIssues: mockListIssues,
-  })),
-  FileSessionRepository: vi.fn().mockImplementation(() => ({
-    findAll: mockFindAll,
-  })),
+  GitHubAdapter: class {
+    listIssues = mockListIssues;
+  },
+  FileSessionRepository: class {
+    findAll = mockFindAll;
+  },
 }));
 
 vi.mock('node:child_process', () => ({
@@ -21,6 +21,7 @@ vi.mock('node:child_process', () => ({
     pid: 12345,
   }),
 }));
+
 
 import { watchCommand } from './watch.js';
 

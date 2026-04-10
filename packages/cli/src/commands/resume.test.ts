@@ -13,18 +13,18 @@ const mockGetOutput = vi.fn();
 const mockOn = vi.fn();
 
 vi.mock('@claudetree/core', () => ({
-  FileSessionRepository: vi.fn().mockImplementation(() => ({
-    findAll: mockFindAll,
-    save: mockSave,
-  })),
-  FileEventRepository: vi.fn().mockImplementation(() => ({
-    append: mockEventAppend,
-  })),
-  ClaudeSessionAdapter: vi.fn().mockImplementation(() => ({
-    resume: mockResume,
-    getOutput: mockGetOutput,
-    on: mockOn,
-  })),
+  FileSessionRepository: class {
+    findAll = mockFindAll;
+    save = mockSave;
+  },
+  FileEventRepository: class {
+    append = mockEventAppend;
+  },
+  ClaudeSessionAdapter: class {
+    resume = mockResume;
+    getOutput = mockGetOutput;
+    on = mockOn;
+  },
 }));
 
 import { resumeCommand } from './resume.js';

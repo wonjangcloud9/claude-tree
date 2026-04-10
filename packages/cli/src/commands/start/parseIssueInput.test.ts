@@ -1,40 +1,46 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { parseIssueInput } from './parseIssueInput.js';
-import { GitHubAdapter } from '@claudetree/core';
 
 // Mock GitHubAdapter
+const mockParseIssueUrl = vi.fn();
+const mockGetIssue = vi.fn();
+const mockGenerateBranchName = vi.fn();
+
 vi.mock('@claudetree/core', async () => {
   const actual = await vi.importActual('@claudetree/core');
   return {
     ...actual,
-    GitHubAdapter: vi.fn().mockImplementation(() => ({
-      parseIssueUrl: vi.fn().mockImplementation((url: string) => {
-        const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/(issues|pull)\/(\d+)/);
-        if (!match) return null;
-        return {
-          owner: match[1],
-          repo: match[2],
-          number: parseInt(match[4]!, 10),
-        };
-      }),
-      getIssue: vi.fn().mockResolvedValue({
-        number: 42,
-        title: 'Add feature X',
-        body: 'We need to implement feature X',
-        labels: ['enhancement'],
-        state: 'open',
-        url: 'https://github.com/owner/repo/issues/42',
-      }),
-      generateBranchName: vi.fn().mockImplementation((num: number, title: string) => {
-        return `issue-${num}-${title.toLowerCase().replace(/\s+/g, '-').slice(0, 30)}`;
-      }),
-    })),
+    GitHubAdapter: class {
+      parseIssueUrl = mockParseIssueUrl;
+      getIssue = mockGetIssue;
+      generateBranchName = mockGenerateBranchName;
+    },
   };
 });
 
 describe('parseIssueInput', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockParseIssueUrl.mockImplementation((url: string) => {
+      const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/(issues|pull)\/(\d+)/);
+      if (!match) return null;
+      return {
+        owner: match[1],
+        repo: match[2],
+        number: parseInt(match[4]!, 10),
+      };
+    });
+    mockGetIssue.mockResolvedValue({
+      number: 42,
+      title: 'Add feature X',
+      body: 'We need to implement feature X',
+      labels: ['enhancement'],
+      state: 'open',
+      url: 'https://github.com/owner/repo/issues/42',
+    });
+    mockGenerateBranchName.mockImplementation((num: number, title: string) => {
+      return `issue-${num}-${title.toLowerCase().replace(/\s+/g, '-').slice(0, 30)}`;
+    });
   });
 
   describe('GitHub URL input', () => {
@@ -94,16 +100,7 @@ describe('parseIssueInput', () => {
 
     it('should gracefully handle API failure', async () => {
       // Mock getIssue to throw
-      const mockGetIssue = vi.fn().mockRejectedValue(new Error('API error'));
-      vi.mocked(GitHubAdapter).mockImplementationOnce(() => ({
-        parseIssueUrl: vi.fn(),
-        getIssue: mockGetIssue,
-        generateBranchName: vi.fn(),
-        createPR: vi.fn(),
-        getDefaultBranch: vi.fn(),
-        listIssues: vi.fn(),
-        octokit: {},
-      } as unknown as GitHubAdapter));
+      mockGetIssue.mockRejectedValue(new Error('API error'));
 
       const result = await parseIssueInput('42', {
         token: 'fake-token',

@@ -10,10 +10,10 @@ const mockSave = vi.fn();
 
 // Mock FileSessionRepository
 vi.mock('@claudetree/core', () => ({
-  FileSessionRepository: vi.fn().mockImplementation(() => ({
-    findAll: mockFindAll,
-    save: mockSave,
-  })),
+  FileSessionRepository: class {
+    findAll = mockFindAll;
+    save = mockSave;
+  },
 }));
 
 // Import after mock

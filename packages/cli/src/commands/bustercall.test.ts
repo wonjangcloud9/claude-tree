@@ -22,12 +22,12 @@ vi.mock('node:child_process', () => ({
 const mockListIssues = vi.fn();
 const mockNotifyBatch = vi.fn();
 vi.mock('@claudetree/core', () => ({
-  GitHubAdapter: vi.fn().mockImplementation(() => ({
-    listIssues: mockListIssues,
-  })),
-  SlackNotifier: vi.fn().mockImplementation(() => ({
-    notifyBatch: mockNotifyBatch,
-  })),
+  GitHubAdapter: class {
+    listIssues = mockListIssues;
+  },
+  SlackNotifier: class {
+    notifyBatch = mockNotifyBatch;
+  },
 }));
 
 import { bustercallCommand } from './bustercall.js';

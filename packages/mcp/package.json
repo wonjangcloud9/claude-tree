@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/mcp",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "description": "MCP server for claudetree: expose session management as Model Context Protocol tools",
   "type": "module",
   "main": "./dist/index.js",
@@ -43,6 +43,6 @@
   },
   "devDependencies": {
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.4"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@claudetree/web",
-  "version": "0.5.12",
+  "version": "0.5.13",
   "private": true,
   "description": "Web dashboard for claudetree",
   "scripts": {
@@ -28,6 +28,6 @@
     "@vitejs/plugin-react": "^5.1.2",
     "jsdom": "^27.4.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.4"
   }
 }

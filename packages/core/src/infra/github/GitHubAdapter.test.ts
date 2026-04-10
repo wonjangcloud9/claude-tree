@@ -3,8 +3,8 @@ import { GitHubAdapter } from './GitHubAdapter.js';
 
 // Mock Octokit
 vi.mock('octokit', () => ({
-  Octokit: vi.fn().mockImplementation(() => ({
-    rest: {
+  Octokit: class MockOctokit {
+    rest = {
       issues: {
         get: vi.fn().mockResolvedValue({
           data: {
@@ -16,6 +16,7 @@ vi.mock('octokit', () => ({
             html_url: 'https://github.com/owner/repo/issues/42',
           },
         }),
+        listForRepo: vi.fn().mockResolvedValue({ data: [] }),
       },
       pulls: {
         create: vi.fn().mockResolvedValue({
@@ -32,8 +33,8 @@ vi.mock('octokit', () => ({
           },
         }),
       },
-    },
-  })),
+    };
+  },
 }));
 
 describe('GitHubAdapter', () => {

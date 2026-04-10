@@ -89,7 +89,7 @@ describe('summaryCommand', () => {
 
       await summaryCommand.parseAsync(['node', 'test']);
 
-      const output = consoleLogSpy.mock.calls.map(c => c[0]).join('\n');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('\n');
       expect(output).toContain('Summary');
       expect(output).toContain('#42');
       expect(output).toContain('0.05');
@@ -110,7 +110,7 @@ describe('summaryCommand', () => {
 
       await summaryCommand.parseAsync(['node', 'test', '--format', 'json']);
 
-      const output = consoleLogSpy.mock.calls.map(c => c[0]).join('');
+      const output = consoleLogSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
       const parsed = JSON.parse(output);
       expect(parsed.total).toBe(1);
       expect(parsed.completed).toBe(1);
