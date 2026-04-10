@@ -528,4 +528,83 @@ export function registerTools(server: McpServer): void {
       return textResult(lines.join('\n'));
     },
   );
+
+  // ──────────────────────────────────────
+  // ct_summary - Get work activity summary
+  // ──────────────────────────────────────
+  server.registerTool(
+    'ct_summary',
+    {
+      description:
+        'Generate a summary of session activity with success rate, cost analytics, and per-session details',
+      inputSchema: {
+        since: z
+          .string()
+          .optional()
+          .describe('Time period: 24h, 7d, 30d (default: 24h)'),
+        tag: z.string().optional().describe('Filter by tag'),
+      },
+    },
+    async ({ since, tag }) => {
+      const sessionRepo = new FileSessionRepository(join(cwd, CONFIG_DIR));
+      let sessions = await sessionRepo.findAll();
+
+      // Time filter
+      const sinceStr = since ?? '24h';
+      const match = sinceStr.match(/^(\d+)([hdwm])$/);
+      if (match) {
+        const val = parseInt(match[1]!, 10);
+        const unit = match[2]!;
+        const msMap: Record<string, number> = {
+          h: 3_600_000, d: 86_400_000, w: 604_800_000, m: 2_592_000_000,
+        };
+        const cutoff = Date.now() - val * (msMap[unit] ?? 86_400_000);
+        sessions = sessions.filter(
+          (s) => new Date(s.createdAt).getTime() >= cutoff,
+        );
+      }
+
+      if (tag) {
+        sessions = sessions.filter((s) => s.tags?.includes(tag));
+      }
+
+      if (sessions.length === 0) {
+        return textResult('No sessions found in the specified period.');
+      }
+
+      const completed = sessions.filter((s) => s.status === 'completed').length;
+      const failed = sessions.filter((s) => s.status === 'failed').length;
+      const running = sessions.filter((s) => s.status === 'running').length;
+      let totalCost = 0;
+      let totalInput = 0;
+      let totalOutput = 0;
+
+      for (const s of sessions) {
+        if (s.usage) {
+          totalCost += s.usage.totalCostUsd;
+          totalInput += s.usage.inputTokens;
+          totalOutput += s.usage.outputTokens;
+        }
+      }
+
+      const rate = Math.round((completed / sessions.length) * 100);
+
+      const lines = [
+        `Period: ${sinceStr}`,
+        `Sessions: ${sessions.length} (${completed} completed, ${failed} failed, ${running} running)`,
+        `Success rate: ${rate}%`,
+        `Total cost: $${totalCost.toFixed(4)}`,
+        `Tokens: ${totalInput.toLocaleString()} in / ${totalOutput.toLocaleString()} out`,
+      ];
+
+      const issues = [...new Set(
+        sessions.filter((s) => s.issueNumber).map((s) => `#${s.issueNumber}`),
+      )];
+      if (issues.length > 0) {
+        lines.push(`Issues: ${issues.join(', ')}`);
+      }
+
+      return textResult(lines.join('\n'));
+    },
+  );
 }
