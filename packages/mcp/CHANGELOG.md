@@ -1,5 +1,12 @@
 # @claudetree/mcp
 
+## 0.11.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @claudetree/core@0.11.0
+
 ## 0.11.2
 
 ### Patch Changes

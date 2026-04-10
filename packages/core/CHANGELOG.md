@@ -1,5 +1,15 @@
 # @claudetree/core
 
+## 0.11.0
+
+### Minor Changes
+
+- feat: 3 new session templates + ct archive command
+
+  - New templates: security (audit), migration, performance (profiling)
+  - New ct archive: archive old sessions with time/tag/status filtering
+  - Upgrade @types/node 25.0.3 → 25.6.0
+
 ## 0.10.0
 
 ### Minor Changes
