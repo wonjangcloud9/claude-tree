@@ -4,7 +4,7 @@ import { access, readFile } from 'node:fs/promises';
 import { spawn, exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { Mutex } from 'async-mutex';
-import { GitHubAdapter, SlackNotifier } from '@claudetree/core';
+import { GitHubAdapter, SlackNotifier, FileSessionRepository } from '@claudetree/core';
 import type { Issue } from '@claudetree/shared';
 
 import {
@@ -207,6 +207,28 @@ export const bustercallCommand = new Command('bustercall')
       if (skipped > 0) {
         console.log(`Skipped ${skipped} issue(s) with existing PRs`);
       }
+    }
+
+    // Filter out issues with active/completed sessions (resume support)
+    try {
+      const sessionRepo = new FileSessionRepository(join(cwd, CONFIG_DIR));
+      const sessions = await sessionRepo.findAll();
+      const handledIssues = new Set(
+        sessions
+          .filter((s) => s.status === 'running' || s.status === 'completed')
+          .map((s) => s.issueNumber)
+          .filter((n): n is number => n !== null),
+      );
+      if (handledIssues.size > 0) {
+        const before = issues.length;
+        issues = issues.filter((i) => !handledIssues.has(i.number));
+        const skipped = before - issues.length;
+        if (skipped > 0) {
+          console.log(`Skipped ${skipped} issue(s) with active/completed sessions`);
+        }
+      }
+    } catch {
+      // Sessions file may not exist yet
     }
 
     // Apply limit
