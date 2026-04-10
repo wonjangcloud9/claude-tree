@@ -45,6 +45,9 @@ export interface Session {
   usage: TokenUsage | null;
   // Progress tracking
   progress: SessionProgress | null;
+  // Retry tracking
+  retryCount: number;
+  lastError: string | null;
 }
 
 export interface CreateSessionInput {

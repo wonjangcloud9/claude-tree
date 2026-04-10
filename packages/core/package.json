@@ -1,7 +1,7 @@
 {
   "name": "@claudetree/core",
-  "version": "0.4.5",
-  "description": "Core domain and infrastructure for claudetree",
+  "version": "0.6.0",
+  "description": "Core engine for claudetree: worktree management, GitHub integration, session orchestration & cost tracking",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,7 +16,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "dev": "tsc --watch",
     "test": "vitest",
     "test:run": "vitest run",
@@ -28,19 +28,22 @@
     "directory": "packages/core"
   },
   "homepage": "https://github.com/wonjangcloud9/claude-tree#readme",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "license": "MIT",
   "dependencies": {
     "@claudetree/shared": "workspace:*",
     "debug": "^4.4.3",
     "execa": "^9.6.1",
     "octokit": "^5.0.5",
-    "ws": "^8.19.0"
+    "ws": "^8.20.0"
   },
   "devDependencies": {
-    "@types/debug": "^4.1.12",
+    "@types/debug": "^4.1.13",
     "@types/ws": "^8.18.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",
-    "yaml": "^2.8.2"
+    "yaml": "^2.8.3"
   }
 }

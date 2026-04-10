@@ -13,7 +13,7 @@ interface WebOptions {
 }
 
 export const webCommand = new Command('web')
-  .description('Start web dashboard')
+  .description('Launch web dashboard at localhost:3000')
   .option('-p, --port <port>', 'Web server port', '3000')
   .option('--ws-port <port>', 'WebSocket server port', '3001')
   .action(async (options: WebOptions) => {

@@ -80,6 +80,9 @@ export class WorktreeSyncService {
       usage: null,
       // Progress tracking
       progress: null,
+      // Retry tracking
+      retryCount: 0,
+      lastError: null,
     };
   }
 }

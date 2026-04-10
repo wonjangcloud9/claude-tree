@@ -8,3 +8,4 @@ export * from './template.js';
 export * from './tdd.js';
 export * from './statistics.js';
 export * from './chain.js';
+export * from './retry.js';

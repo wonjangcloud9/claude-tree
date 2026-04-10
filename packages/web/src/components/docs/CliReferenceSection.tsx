@@ -18,7 +18,10 @@ export function CliReferenceSection() {
       <h2 id="ct-init" style={sectionTitle}>
         ct init
       </h2>
-      <p style={paragraph}>Initialize claudetree in the current Git repository.</p>
+      <p style={paragraph}>
+        Initialize claudetree in the current Git repository. GitHub remote is automatically
+        detected from git origin (supports SSH and HTTPS URLs).
+      </p>
       <CodeBlock
         code={`ct init [options]
 
@@ -176,59 +179,72 @@ https://github.com/owner/repo/issues/44
         filename="issues.txt"
       />
 
-      <h2 id="ct-bustercall" style={sectionTitle}>
-        ct bustercall
+      <h2 id="ct-auto" style={sectionTitle}>
+        ct auto
       </h2>
       <p style={paragraph}>
-        Auto-fetch all open GitHub issues and start parallel Claude sessions. Unlike{' '}
-        <code>ct batch</code>, this command automatically fetches issues from GitHub.
+        Auto-fetch open GitHub issues with smart conflict detection. Alias for{' '}
+        <code>ct bustercall</code>. Conflicting issues run sequentially to prevent merge conflicts.
       </p>
       <CodeBlock
-        code={`ct bustercall [options]
+        code={`ct auto [options]
 
 Options:
   -l, --label <label>        Filter by GitHub label (comma-separated for AND)
   -n, --limit <number>       Maximum issues to process (default: 10)
   -P, --parallel <number>    Number of parallel sessions (default: 3)
   -T, --template <template>  Session template to use
-  -t, --token <token>        GitHub token (or use GITHUB_TOKEN env)
   -e, --exclude <numbers>    Exclude issue numbers (comma-separated)
+  -S, --sequential           Force sequential execution
   --dry-run                  Show target issues without starting`}
         language="bash"
       />
 
       <h4 style={subSectionTitle}>Examples</h4>
       <CodeBlock
-        code={`# Process all open issues (up to 10)
-ct bustercall
+        code={`# Auto-fetch and process open issues
+ct auto
 
 # Filter by label
-ct bustercall --label bug
+ct auto --label bug
 
 # Preview target issues
-ct bustercall --dry-run
+ct auto --dry-run
 
 # 5 parallel sessions with bugfix template
-ct bustercall -P 5 --template bugfix
-
-# Exclude specific issues
-ct bustercall --exclude 101,102,103`}
+ct auto -P 5 --template bugfix`}
         language="bash"
       />
 
-      <h4 style={subSectionTitle}>Requirements</h4>
+      <h2 id="ct-chain" style={sectionTitle}>
+        ct chain
+      </h2>
       <p style={paragraph}>
-        Requires GitHub configuration in <code>.claudetree/config.json</code>:
+        Run issues sequentially where each builds on the previous branch. Useful for
+        dependent changes (DB schema → API → UI).
       </p>
       <CodeBlock
-        code={`{
-  "github": {
-    "owner": "your-username",
-    "repo": "your-repo"
-  }
-}`}
-        language="json"
-        filename="config.json"
+        code={`ct chain <issues...> [options]
+
+Options:
+  -T, --template <template>  Session template for all issues
+  --skip-failed              Continue chain even if an issue fails
+  --base-branch <branch>     Base branch for first issue (default: develop)
+  --dry-run                  Preview chain plan`}
+        language="bash"
+      />
+
+      <h4 style={subSectionTitle}>Examples</h4>
+      <CodeBlock
+        code={`# Sequential: issue 10 → 11 → 12
+ct chain 10 11 12
+
+# Preview the chain plan
+ct chain 10 11 12 --dry-run
+
+# Continue even if one fails
+ct chain 10 11 12 --skip-failed`}
+        language="bash"
       />
 
       <h2 id="ct-clean" style={sectionTitle}>
@@ -307,6 +323,104 @@ a1b2c3d4     #42     running    issue-42-fix     5 min ago
 e5f6g7h8     #43     paused     issue-43-feat    2 hours ago
 i9j0k1l2     #44     completed  issue-44-test    1 day ago`}
         language="text"
+      />
+
+      <h2 id="ct-stats" style={sectionTitle}>
+        ct stats
+      </h2>
+      <p style={paragraph}>
+        Show session analytics: total sessions, cost breakdown, token usage, success rate,
+        and daily activity chart.
+      </p>
+      <CodeBlock
+        code={`ct stats [options]
+
+Options:
+  --json    Output as JSON`}
+        language="bash"
+      />
+
+      <h2 id="ct-log" style={sectionTitle}>
+        ct log
+      </h2>
+      <p style={paragraph}>
+        View session events and output log. Find sessions by ID prefix or issue number.
+      </p>
+      <CodeBlock
+        code={`ct log <session> [options]
+
+Options:
+  -n, --lines <count>   Number of recent events (default: 50)
+  -t, --type <type>     Filter by type: output, error, commit, file_change, test_run
+  -f, --follow          Follow mode: watch for new events
+  --json                Output as JSON`}
+        language="bash"
+      />
+
+      <h4 style={subSectionTitle}>Examples</h4>
+      <CodeBlock
+        code={`# View last 50 events
+ct log a1b2c3d4
+
+# Follow mode (live tailing)
+ct log a1b2c3d4 -f
+
+# Show only errors
+ct log a1b2c3d4 --type error
+
+# Find by issue number
+ct log 42`}
+        language="bash"
+      />
+
+      <h2 id="ct-config" style={sectionTitle}>
+        ct config
+      </h2>
+      <p style={paragraph}>
+        View or modify claudetree configuration without editing JSON manually.
+      </p>
+      <CodeBlock
+        code={`ct config                          # show all config
+ct config get <key>                # get a value (dot notation)
+ct config set <key> <value>        # set a value
+ct config github                   # shorthand for get
+
+Options:
+  --json    Output as JSON`}
+        language="bash"
+      />
+
+      <h4 style={subSectionTitle}>Examples</h4>
+      <CodeBlock
+        code={`# View all configuration
+ct config
+
+# Get GitHub owner
+ct config get github.owner
+
+# Set GitHub repo
+ct config set github.repo my-project
+
+# Set Slack webhook
+ct config set slack.webhookUrl https://hooks.slack.com/xxx
+
+# JSON output for scripting
+ct config --json`}
+        language="bash"
+      />
+
+      <h2 id="ct-doctor" style={sectionTitle}>
+        ct doctor
+      </h2>
+      <p style={paragraph}>
+        Verify your environment: Node.js, Git, Claude CLI, GitHub authentication.
+      </p>
+      <CodeBlock
+        code={`ct doctor [options]
+
+Options:
+  -q, --quiet    Only show failures and warnings`}
+        language="bash"
       />
 
       <h2 id="ct-list" style={sectionTitle}>

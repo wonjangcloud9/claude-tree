@@ -1,37 +1,58 @@
 #!/usr/bin/env node
 
+import { createRequire } from 'node:module';
 import { program } from 'commander';
 import { batchCommand } from './commands/batch.js';
 import { bustercallCommand } from './commands/bustercall.js';
 import { chainCommand } from './commands/chain.js';
 import { cleanCommand } from './commands/clean.js';
-import { demoCommand } from './commands/demo.js';
+import { configCommand } from './commands/config.js';
 import { doctorCommand } from './commands/doctor.js';
+import { exportCommand } from './commands/export.js';
 import { initCommand } from './commands/init.js';
 import { listCommand } from './commands/list.js';
+import { logCommand } from './commands/log.js';
 import { resumeCommand } from './commands/resume.js';
 import { startCommand } from './commands/start.js';
+import { statsCommand } from './commands/stats.js';
 import { statusCommand } from './commands/status.js';
 import { stopCommand } from './commands/stop.js';
+import { watchCommand } from './commands/watch.js';
 import { webCommand } from './commands/web.js';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json') as { version: string };
 
 program
   .name('claudetree')
-  .description('Git Worktree-based Claude Code multi-session manager')
-  .version('0.1.0');
+  .description('Issue-to-PR automation: parallel Claude Code sessions with cost tracking & web dashboard')
+  .version(version);
 
+program.addCommand(initCommand);
+program.addCommand(startCommand);
+program.addCommand(statusCommand);
+program.addCommand(statsCommand);
+program.addCommand(logCommand);
+program.addCommand(stopCommand);
+program.addCommand(resumeCommand);
 program.addCommand(batchCommand);
 program.addCommand(bustercallCommand);
 program.addCommand(chainCommand);
-program.addCommand(cleanCommand);
-program.addCommand(demoCommand);
-program.addCommand(doctorCommand);
-program.addCommand(initCommand);
-program.addCommand(listCommand);
-program.addCommand(resumeCommand);
-program.addCommand(startCommand);
-program.addCommand(statusCommand);
-program.addCommand(stopCommand);
+program.addCommand(configCommand);
+program.addCommand(exportCommand);
+program.addCommand(watchCommand);
 program.addCommand(webCommand);
+program.addCommand(listCommand);
+program.addCommand(cleanCommand);
+program.addCommand(doctorCommand);
+
+program.addHelpText('after', `
+Quick Start:
+  $ ct init                              # initialize in your project
+  $ ct start <github-issue-url>          # fire and forget
+  $ ct status                            # monitor progress
+  $ ct stats                             # view cost analytics
+
+Docs: https://github.com/wonjangcloud9/claude-tree`);
 
 program.parse();

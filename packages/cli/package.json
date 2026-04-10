@@ -1,7 +1,7 @@
 {
   "name": "@claudetree/cli",
-  "version": "0.4.5",
-  "description": "CLI for claudetree - Manage Claude sessions with git worktrees",
+  "version": "0.6.0",
+  "description": "Issue-to-PR automation: parallel Claude Code sessions with cost tracking, batch processing & web dashboard",
   "type": "module",
   "bin": {
     "claudetree": "./dist/index.js",
@@ -12,7 +12,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "test": "vitest",
@@ -21,11 +21,15 @@
   },
   "keywords": [
     "claude",
+    "claude-code",
     "cli",
     "git",
     "worktree",
     "ai",
-    "session"
+    "automation",
+    "github-issues",
+    "parallel-sessions",
+    "cost-tracking"
   ],
   "repository": {
     "type": "git",
@@ -33,12 +37,15 @@
     "directory": "packages/cli"
   },
   "homepage": "https://github.com/wonjangcloud9/claude-tree#readme",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "license": "MIT",
   "dependencies": {
     "@claudetree/core": "workspace:*",
     "@claudetree/shared": "workspace:*",
     "async-mutex": "^0.5.0",
-    "commander": "^14.0.2"
+    "commander": "^14.0.3"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",

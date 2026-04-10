@@ -5,6 +5,15 @@
   <a href="README.zh.md">中文</a>
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/@claudetree/cli"><img src="https://img.shields.io/npm/v/@claudetree/cli.svg" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@claudetree/cli"><img src="https://img.shields.io/npm/dm/@claudetree/cli.svg" alt="npm downloads"></a>
+  <a href="https://github.com/wonjangcloud9/claude-tree/actions/workflows/ci.yml"><img src="https://github.com/wonjangcloud9/claude-tree/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/wonjangcloud9/claude-tree/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/@claudetree/cli.svg" alt="license"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D22-brightgreen" alt="node version">
+  <img src="https://img.shields.io/badge/TypeScript-ESM-blue" alt="TypeScript ESM">
+</p>
+
 # claudetree
 
 **Run multiple Claude Code sessions in parallel** — each in its own isolated git worktree.
@@ -116,9 +125,12 @@ ct start https://github.com/you/my-web-app/issues/42
 ### Step 4: Monitor progress
 
 ```bash
-ct status    # CLI status view with progress bar & cost
-ct status -w # Watch mode (auto-refresh)
-ct web       # Web dashboard at http://localhost:3000
+ct status           # CLI status view with progress bar & cost
+ct status -w        # Watch mode (auto-refresh)
+ct log abc123       # View session events
+ct log abc123 -f    # Follow mode (live tailing)
+ct stats            # Cost analytics and success rate
+ct web              # Web dashboard at http://localhost:3000
 ```
 
 **Status output includes:**
@@ -131,15 +143,21 @@ ct web       # Web dashboard at http://localhost:3000
 | Command | Description |
 |---------|-------------|
 | `ct init` | Initialize claudetree in your project |
-| `ct start <issue>` | Create worktree and start Claude session |
-| `ct list` | List all worktrees |
+| `ct start <issue>` | Start a Claude session for a GitHub issue |
 | `ct status` | Show all session statuses with progress & cost |
+| `ct stats` | Session analytics: cost, tokens, success rate |
+| `ct log <session>` | View session events (supports `-f` follow mode) |
 | `ct stop [id]` | Stop a session |
-| `ct web` | Start web dashboard |
-| `ct doctor` | Check environment setup (Claude CLI, Git, GitHub) |
-| `ct demo` | Interactive demo to explore features |
-| `ct bustercall` | Batch process multiple issues in parallel |
-| `ct chain` | Execute dependency chain of issues sequentially |
+| `ct resume <id>` | Resume a paused session |
+| `ct list` | List all worktrees |
+| `ct batch [issues]` | Process a list of issues in parallel |
+| `ct auto` | Auto-fetch open issues with conflict detection |
+| `ct chain [issues]` | Run issues sequentially (dependency order) |
+| `ct config` | View or modify config (`ct config set github.owner myorg`) |
+| `ct export` | Generate session report (`ct export -o report.md`) |
+| `ct web` | Launch web dashboard at localhost:3000 |
+| `ct clean` | Remove finished worktrees |
+| `ct doctor` | Verify setup: Node, Git, Claude CLI, GitHub |
 
 ### Start Options
 
@@ -261,22 +279,21 @@ ct start 42 --skill review
 ```
 Thorough code review with CRITICAL / WARNING / INFO levels
 
-## Batch Processing with Bustercall
+## Batch Processing
 
-Process multiple GitHub issues in parallel with a single command:
+Process multiple GitHub issues in parallel. Use `ct auto` (smart mode) or `ct batch` (manual mode):
 
 ```bash
-# Process all issues with 'bug' label (3 parallel sessions)
-ct bustercall --label bug --parallel 3
+# Auto: fetch all open issues with smart conflict detection
+ct auto --label bug --parallel 3
+ct auto --label high-priority --parallel 5
 
-# Process high-priority issues
-ct bustercall --label high-priority --parallel 5
-
-# With budget limit per session
-ct bustercall --label feature --parallel 3 --max-cost 0.50
+# Manual: specify exact issues
+ct batch 101 102 103
+ct batch --label bug --limit 10
 ```
 
-### Bustercall Options
+### Auto/Bustercall Options
 
 | Option | Description |
 |--------|-------------|
@@ -396,14 +413,16 @@ PRs are automatically created targeting the `develop` branch.
 
 ## Comparison
 
-| Feature | Manual Claude | claudetree |
-|---------|--------------|------------|
-| Multiple sessions | One at a time | Unlimited parallel |
+| Feature | Claude Code | claudetree |
+|---------|-------------|------------|
+| Parallel sessions | One at a time | Unlimited parallel |
+| Issue-to-PR pipeline | Manual copy-paste | `ct start <url>` |
+| Cost tracking | Current session only | Per-session + analytics (`ct stats`) |
+| Batch processing | N/A | `ct batch` / `ct auto` |
+| Dependency chains | N/A | `ct chain` |
+| Session logs | Scroll terminal | `ct log` + web dashboard |
 | Context isolation | Shared directory | Separate worktrees |
-| Issue integration | Copy-paste | Automatic fetch |
-| Progress monitoring | Terminal only | Web dashboard |
-| PR creation | Manual | Automatic |
-| Session management | Manual | Centralized |
+| Progress monitoring | Terminal only | CLI + web dashboard |
 
 ## Limitations
 

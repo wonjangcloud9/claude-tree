@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { mkdir, writeFile, access } from 'node:fs/promises';
+import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { DEFAULT_TEMPLATES } from '@claudetree/core';
 
@@ -11,6 +12,20 @@ interface InitOptions {
   worktreeDir: string;
   force: boolean;
   slack?: string;
+}
+
+function detectGitHubRemote(): { owner: string; repo: string } | null {
+  try {
+    const url = execSync('git remote get-url origin', { encoding: 'utf-8' }).trim();
+    // Match: git@github.com:owner/repo.git or https://github.com/owner/repo.git
+    const sshMatch = url.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
+    if (sshMatch?.[1] && sshMatch?.[2]) {
+      return { owner: sshMatch[1], repo: sshMatch[2] };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export const initCommand = new Command('init')
@@ -37,17 +52,19 @@ export const initCommand = new Command('init')
     // Create config directory
     await mkdir(configDir, { recursive: true });
 
+    // Auto-detect GitHub remote
+    const github = detectGitHubRemote();
+
     // Create default config
-    const config: {
-      version: string;
-      worktreeDir: string;
-      sessions: Record<string, unknown>;
-      slack?: { webhookUrl: string };
-    } = {
+    const config: Record<string, unknown> = {
       version: '0.1.0',
       worktreeDir: options.worktreeDir,
       sessions: {},
     };
+
+    if (github) {
+      config.github = github;
+    }
 
     // Add Slack webhook if provided
     if (options.slack) {
@@ -88,6 +105,11 @@ export const initCommand = new Command('init')
     console.log(`  Config: ${configPath}`);
     console.log(`  Worktrees: ${worktreeDir}`);
     console.log(`  Templates: ${templatesDir} (${Object.keys(DEFAULT_TEMPLATES).length} templates)`);
+    if (github) {
+      console.log(`  GitHub: ${github.owner}/${github.repo} (auto-detected)`);
+    } else {
+      console.log(`  GitHub: not detected — edit ${configPath} to add "github": { "owner": "...", "repo": "..." }`);
+    }
     if (options.slack) {
       console.log(`  Slack: notifications enabled`);
     }

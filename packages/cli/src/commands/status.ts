@@ -1,14 +1,15 @@
 import { Command } from 'commander';
 import { join } from 'node:path';
 import { access } from 'node:fs/promises';
-import { FileSessionRepository } from '@claudetree/core';
-import type { ProgressStep, SessionProgress } from '@claudetree/shared';
+import { FileSessionRepository, ClaudeSessionAdapter } from '@claudetree/core';
+import type { ProgressStep, SessionProgress, Session } from '@claudetree/shared';
 
 const CONFIG_DIR = '.claudetree';
 
 interface StatusOptions {
   json: boolean;
   watch: boolean;
+  health: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -52,10 +53,25 @@ function renderProgressBar(progress: SessionProgress | null): string {
   return `    ${bar} ${DIM}${label}${RESET}`;
 }
 
+function checkProcessHealth(session: Session): 'alive' | 'dead' | 'unknown' {
+  if (!session.osProcessId) return 'unknown';
+  const adapter = new ClaudeSessionAdapter();
+  return adapter.isProcessAlive(session.osProcessId) ? 'alive' : 'dead';
+}
+
+function getHeartbeatAge(session: Session): string | null {
+  if (!session.lastHeartbeat) return null;
+  const ageMs = Date.now() - new Date(session.lastHeartbeat).getTime();
+  if (ageMs < 60_000) return `${Math.round(ageMs / 1000)}s ago`;
+  if (ageMs < 3_600_000) return `${Math.round(ageMs / 60_000)}m ago`;
+  return `${Math.round(ageMs / 3_600_000)}h ago`;
+}
+
 export const statusCommand = new Command('status')
   .description('Show status of all sessions')
   .option('--json', 'Output as JSON', false)
   .option('-w, --watch', 'Watch mode with real-time updates', false)
+  .option('--health', 'Check process health and mark zombie sessions as failed', false)
   .action(async (options: StatusOptions) => {
     const cwd = process.cwd();
     const configDir = join(cwd, CONFIG_DIR);
@@ -88,12 +104,33 @@ export const statusCommand = new Command('status')
       let totalInputTokens = 0;
       let totalOutputTokens = 0;
 
+      let zombieCount = 0;
+
       for (const session of sessions) {
         const color = STATUS_COLORS[session.status] ?? '';
         const statusStr = `${color}${session.status}${RESET}`;
         const issueStr = session.issueNumber ? ` (Issue #${session.issueNumber})` : '';
 
-        console.log(`  ${session.id.slice(0, 8)} - ${statusStr}${issueStr}`);
+        // Health check for running sessions
+        let healthIndicator = '';
+        if (session.status === 'running') {
+          const health = checkProcessHealth(session);
+          if (health === 'dead') {
+            healthIndicator = ` \x1b[31m[ZOMBIE]\x1b[0m`;
+            zombieCount++;
+            if (options.health) {
+              session.status = 'failed';
+              session.lastError = 'Process died (detected by health check)';
+              session.updatedAt = new Date();
+              await sessionRepo.save(session);
+              healthIndicator = ` \x1b[33m[RECOVERED -> failed]\x1b[0m`;
+            }
+          } else if (health === 'alive') {
+            healthIndicator = ` \x1b[32m[HEALTHY]\x1b[0m`;
+          }
+        }
+
+        console.log(`  ${session.id.slice(0, 8)} - ${statusStr}${issueStr}${healthIndicator}`);
         console.log(`    Worktree: ${session.worktreeId.slice(0, 8)}`);
         if (session.prompt) {
           const truncatedPrompt = session.prompt.length > 50
@@ -102,6 +139,25 @@ export const statusCommand = new Command('status')
           console.log(`    Prompt: ${truncatedPrompt}`);
         }
         console.log(`    Created: ${session.createdAt.toLocaleString()}`);
+
+        // Display heartbeat age for running sessions
+        if (session.status === 'running') {
+          const heartbeatAge = getHeartbeatAge(session);
+          if (heartbeatAge) {
+            console.log(`    Heartbeat: ${heartbeatAge}`);
+          }
+        }
+
+        // Display retry info if applicable
+        if (session.retryCount > 0) {
+          console.log(`    \x1b[33mRetries:\x1b[0m ${session.retryCount}`);
+          if (session.lastError) {
+            const truncErr = session.lastError.length > 60
+              ? session.lastError.slice(0, 60) + '...'
+              : session.lastError;
+            console.log(`    \x1b[31mLast error:\x1b[0m ${truncErr}`);
+          }
+        }
 
         // Display progress for running sessions
         if (session.status === 'running' && session.progress) {
@@ -119,6 +175,12 @@ export const statusCommand = new Command('status')
         }
 
         console.log('');
+      }
+
+      // Show zombie warning
+      if (zombieCount > 0 && !options.health) {
+        console.log(`\x1b[31m⚠ ${zombieCount} zombie session(s) detected.\x1b[0m`);
+        console.log(`  Run \x1b[33mct status --health\x1b[0m to auto-recover them.\n`);
       }
 
       // Show totals if any session has usage data

@@ -77,7 +77,7 @@ async function startChainItem(
 }
 
 export const chainCommand = new Command('chain')
-  .description('Execute a dependency chain of issues (each builds on the previous)')
+  .description('Run issues sequentially where each builds on the previous')
   .argument('<issues...>', 'Issue numbers in dependency order (first is base)')
   .option('-T, --template <template>', 'Session template (bugfix, feature, refactor)')
   .option('--skip-failed', 'Continue chain even if an issue fails', false)

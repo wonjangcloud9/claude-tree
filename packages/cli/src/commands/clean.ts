@@ -26,7 +26,7 @@ async function confirm(message: string): Promise<boolean> {
 }
 
 export const cleanCommand = new Command('clean')
-  .description('Remove all worktrees (except main)')
+  .description('Remove finished worktrees and clean up stale sessions')
   .option('-f, --force', 'Force removal without confirmation', false)
   .option('--keep-sessions', 'Keep session records after removal', false)
   .option('--dry-run', 'Show what would be removed without removing', false)

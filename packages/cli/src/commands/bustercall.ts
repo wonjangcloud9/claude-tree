@@ -119,7 +119,8 @@ async function getIssuesWithExistingPRs(
 }
 
 export const bustercallCommand = new Command('bustercall')
-  .description('Auto-fetch all open issues and start parallel Claude sessions')
+  .alias('auto')
+  .description('Auto-fetch open issues, detect conflicts, and start parallel sessions')
   .option('-l, --label <label>', 'Filter by GitHub label (comma-separated for AND)')
   .option('-n, --limit <number>', 'Maximum issues to process', '10')
   .option('-P, --parallel <number>', 'Number of parallel sessions', '3')
