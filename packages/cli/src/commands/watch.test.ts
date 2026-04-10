@@ -122,7 +122,6 @@ describe('watchCommand', () => {
     });
 
     it('should accept --label option', () => {
-      const opts = watchCommand.opts();
       const labelOption = watchCommand.options.find(o => o.long === '--label');
       expect(labelOption).toBeDefined();
     });
