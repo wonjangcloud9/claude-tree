@@ -422,6 +422,7 @@ export const startCommand = new Command('start')
       let outputCount = 0;
       let currentCost = 0;
       let budgetExceeded = false;
+      const budgetAlerts = new Set<number>();
 
       for await (const output of claudeAdapter.getOutput(result.processId)) {
         outputCount++;
@@ -438,14 +439,30 @@ export const startCommand = new Command('start')
         if (output.cumulativeCost !== undefined) {
           currentCost = output.cumulativeCost;
 
-          if (options.maxCost && currentCost >= options.maxCost && !budgetExceeded) {
-            budgetExceeded = true;
-            console.log(`\x1b[31m[Budget]\x1b[0m Cost $${currentCost.toFixed(4)} exceeded limit $${options.maxCost.toFixed(4)}. Stopping...`);
-            await claudeAdapter.stop(result.processId);
-            session.status = 'failed';
-            session.updatedAt = new Date();
-            await sessionRepo.save(session);
-            break;
+          if (options.maxCost) {
+            const ratio = currentCost / options.maxCost;
+
+            // Budget warning alerts at 50%, 75%, 90%
+            if (ratio >= 0.9 && !budgetAlerts.has(90)) {
+              budgetAlerts.add(90);
+              console.log(`\x1b[31m[Budget 90%]\x1b[0m $${currentCost.toFixed(4)} / $${options.maxCost.toFixed(4)} - approaching limit!`);
+            } else if (ratio >= 0.75 && !budgetAlerts.has(75)) {
+              budgetAlerts.add(75);
+              console.log(`\x1b[33m[Budget 75%]\x1b[0m $${currentCost.toFixed(4)} / $${options.maxCost.toFixed(4)}`);
+            } else if (ratio >= 0.5 && !budgetAlerts.has(50)) {
+              budgetAlerts.add(50);
+              console.log(`\x1b[33m[Budget 50%]\x1b[0m $${currentCost.toFixed(4)} / $${options.maxCost.toFixed(4)}`);
+            }
+
+            if (currentCost >= options.maxCost && !budgetExceeded) {
+              budgetExceeded = true;
+              console.log(`\x1b[31m[Budget]\x1b[0m Cost $${currentCost.toFixed(4)} exceeded limit $${options.maxCost.toFixed(4)}. Stopping...`);
+              await claudeAdapter.stop(result.processId);
+              session.status = 'failed';
+              session.updatedAt = new Date();
+              await sessionRepo.save(session);
+              break;
+            }
           }
         }
 
