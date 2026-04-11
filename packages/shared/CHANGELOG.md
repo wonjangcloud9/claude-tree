@@ -1,5 +1,15 @@
 # @claudetree/shared
 
+## 0.8.0
+
+### Minor Changes
+
+- feat: ct template command, tag/retry stats in dashboard
+
+  - New ct template list/show/create for managing session templates from CLI
+  - Web dashboard stats now include tag breakdown and retry statistics
+  - TagBreakdown and RetryStats types in shared package
+
 ## 0.7.1
 
 ### Patch Changes
