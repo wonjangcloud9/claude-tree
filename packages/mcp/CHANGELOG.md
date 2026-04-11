@@ -1,5 +1,13 @@
 # @claudetree/mcp
 
+## 0.11.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @claudetree/shared@0.8.0
+  - @claudetree/core@0.11.1
+
 ## 0.11.3
 
 ### Patch Changes
