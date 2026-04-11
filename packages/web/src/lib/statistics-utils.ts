@@ -131,6 +131,25 @@ export function calculateStatistics(sessions: Session[]): SessionStatistics {
   const dailyStats = calculateDailyStats(sessions, 30);
   const weeklyStats = calculateWeeklyStats(sessions, 12);
 
+  // Tag breakdown
+  const tagBreakdown: Record<string, { count: number; cost: number; completed: number; failed: number }> = {};
+  for (const session of sessions) {
+    for (const tag of session.tags ?? []) {
+      if (!tagBreakdown[tag]) {
+        tagBreakdown[tag] = { count: 0, cost: 0, completed: 0, failed: 0 };
+      }
+      const entry = tagBreakdown[tag]!;
+      entry.count++;
+      if (session.usage) entry.cost += session.usage.totalCostUsd;
+      if (session.status === 'completed') entry.completed++;
+      if (session.status === 'failed') entry.failed++;
+    }
+  }
+
+  // Retry stats
+  const sessionsWithRetries = sessions.filter((s) => s.retryCount > 0).length;
+  const totalRetries = sessions.reduce((sum, s) => sum + (s.retryCount ?? 0), 0);
+
   return {
     totalSessions,
     successRate,
@@ -140,5 +159,7 @@ export function calculateStatistics(sessions: Session[]): SessionStatistics {
     averageSessionDuration,
     dailyStats,
     weeklyStats,
+    tagBreakdown,
+    retryStats: { sessionsWithRetries, totalRetries },
   };
 }

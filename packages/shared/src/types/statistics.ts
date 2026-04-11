@@ -17,6 +17,18 @@ export interface WeeklyStatistics {
   successRate: number;
 }
 
+export interface TagBreakdown {
+  count: number;
+  cost: number;
+  completed: number;
+  failed: number;
+}
+
+export interface RetryStats {
+  sessionsWithRetries: number;
+  totalRetries: number;
+}
+
 export interface SessionStatistics {
   totalSessions: number;
   successRate: number;
@@ -26,4 +38,6 @@ export interface SessionStatistics {
   averageSessionDuration: number;
   dailyStats: DailyStatistics[];
   weeklyStats: WeeklyStatistics[];
+  tagBreakdown?: Record<string, TagBreakdown>;
+  retryStats?: RetryStats;
 }
