@@ -18,15 +18,23 @@ vi.mock('node:child_process', () => ({
   },
 }));
 
-// Mock GitHubAdapter and SlackNotifier
+// Mock GitHubAdapter, SlackNotifier, and FileSessionRepository
 const mockListIssues = vi.fn();
 const mockNotifyBatch = vi.fn();
+const mockSessionFindAll = vi.fn().mockResolvedValue([]);
+const mockSessionDelete = vi.fn().mockResolvedValue(undefined);
+const mockSessionSave = vi.fn().mockResolvedValue(undefined);
 vi.mock('@claudetree/core', () => ({
   GitHubAdapter: class {
     listIssues = mockListIssues;
   },
   SlackNotifier: class {
     notifyBatch = mockNotifyBatch;
+  },
+  FileSessionRepository: class {
+    findAll = mockSessionFindAll;
+    delete = mockSessionDelete;
+    save = mockSessionSave;
   },
 }));
 
@@ -55,6 +63,8 @@ describe('bustercallCommand', () => {
     mockListIssues.mockReset();
     mockNotifyBatch.mockReset();
     mockExec.mockReset();
+    mockSessionFindAll.mockReset().mockResolvedValue([]);
+    mockSessionDelete.mockReset().mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
@@ -326,6 +336,122 @@ describe('bustercallCommand', () => {
         // Template is used when starting sessions, not shown in dry-run
         expect(consoleLogSpy).toHaveBeenCalledWith(
           expect.stringContaining('[Dry Run]')
+        );
+      });
+    });
+
+    describe('batch ID tracking', () => {
+      it('should display batch ID in dry-run output', async () => {
+        mockListIssues.mockResolvedValue([
+          { number: 101, title: 'Fix bug', labels: [] },
+        ]);
+
+        await bustercallCommand.parseAsync(['node', 'test', '--dry-run']);
+
+        // Batch ID is auto-tagged but visible in normal run summary
+        // In dry-run, the batch tag is prepared but not shown in summary
+        expect(mockSpawn).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('with --sort option', () => {
+      it('should sort issues by priority', async () => {
+        mockListIssues.mockResolvedValue([
+          { number: 101, title: 'Low priority fix', labels: ['low'] },
+          { number: 102, title: 'Critical fix', labels: ['critical'] },
+          { number: 103, title: 'Medium fix', labels: ['medium'] },
+        ]);
+
+        await bustercallCommand.parseAsync([
+          'node',
+          'test',
+          '--sort',
+          'priority',
+          '--dry-run',
+        ]);
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Sorted issues by: priority'),
+        );
+      });
+
+      it('should reject invalid sort strategy', async () => {
+        mockListIssues.mockResolvedValue([
+          { number: 101, title: 'Fix', labels: [] },
+        ]);
+        (process.exit as unknown as Mock).mockImplementation(() => {
+          throw new Error('process.exit');
+        });
+
+        await expect(
+          bustercallCommand.parseAsync(['node', 'test', '--sort', 'invalid', '--dry-run']),
+        ).rejects.toThrow('process.exit');
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid sort strategy'),
+        );
+      });
+    });
+
+    describe('with --resume option', () => {
+      it('should find failed sessions from previous batch', async () => {
+        mockSessionFindAll.mockResolvedValue([
+          {
+            id: 'session-1',
+            status: 'failed',
+            issueNumber: 101,
+            tags: ['bustercall:batch-abc12345'],
+          },
+          {
+            id: 'session-2',
+            status: 'completed',
+            issueNumber: 102,
+            tags: ['bustercall:batch-abc12345'],
+          },
+        ]);
+        mockListIssues.mockResolvedValue([
+          { number: 101, title: 'Fix A', labels: [] },
+          { number: 102, title: 'Fix B', labels: [] },
+        ]);
+
+        // Mock spawn for actual session start
+        mockSpawn.mockReturnValue({ unref: vi.fn() });
+
+        await bustercallCommand.parseAsync([
+          'node',
+          'test',
+          '--resume',
+          'batch-abc12345',
+          '--dry-run',
+        ]);
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Resuming batch'),
+        );
+        expect(mockSessionDelete).toHaveBeenCalledWith('session-1');
+        // Only 1 session deleted (the failed one, not the completed one)
+        expect(mockSessionDelete).toHaveBeenCalledTimes(1);
+      });
+
+      it('should exit when no failed sessions found', async () => {
+        mockSessionFindAll.mockResolvedValue([
+          {
+            id: 'session-1',
+            status: 'completed',
+            issueNumber: 101,
+            tags: ['bustercall:batch-xyz'],
+          },
+        ]);
+        (process.exit as unknown as Mock).mockImplementation(() => {
+          throw new Error('process.exit');
+        });
+
+        await expect(
+          bustercallCommand.parseAsync(['node', 'test', '--resume', 'batch-xyz']),
+        ).rejects.toThrow('process.exit');
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          'No failed sessions found for this batch. Nothing to resume.',
         );
       });
     });

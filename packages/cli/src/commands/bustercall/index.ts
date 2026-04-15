@@ -12,3 +12,5 @@ export {
   waitForSessionCreated,
   type SessionInfo,
 } from './sessionManager.js';
+
+export { sortIssues, PRIORITY_LABELS } from './issueSorter.js';

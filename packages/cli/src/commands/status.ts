@@ -11,6 +11,7 @@ interface StatusOptions {
   watch: boolean;
   health: boolean;
   tag?: string[];
+  state?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -54,6 +55,17 @@ function renderProgressBar(progress: SessionProgress | null): string {
   return `    ${bar} ${DIM}${label}${RESET}`;
 }
 
+function formatDuration(startDate: Date, endDate?: Date): string {
+  const ms = (endDate ?? new Date()).getTime() - new Date(startDate).getTime();
+  if (ms < 0) return '0s';
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m`;
+}
+
 function checkProcessHealth(session: Session): 'alive' | 'dead' | 'unknown' {
   if (!session.osProcessId) return 'unknown';
   const adapter = new ClaudeSessionAdapter();
@@ -74,6 +86,7 @@ export const statusCommand = new Command('status')
   .option('-w, --watch', 'Watch mode with real-time updates', false)
   .option('--health', 'Check process health and mark zombie sessions as failed', false)
   .option('--tag <tags...>', 'Filter sessions by tag')
+  .option('-s, --state <status>', 'Filter sessions by status (pending, running, paused, completed, failed)')
   .action(async (options: StatusOptions) => {
     const cwd = process.cwd();
     const configDir = join(cwd, CONFIG_DIR);
@@ -89,6 +102,16 @@ export const statusCommand = new Command('status')
 
     const displayStatus = async () => {
       let sessions = await sessionRepo.findAll();
+
+      // Filter by status if specified
+      if (options.state) {
+        const validStates = ['pending', 'running', 'paused', 'completed', 'failed'];
+        if (!validStates.includes(options.state)) {
+          console.error(`Error: Invalid state "${options.state}". Valid states: ${validStates.join(', ')}`);
+          process.exit(1);
+        }
+        sessions = sessions.filter((s) => s.status === options.state);
+      }
 
       // Filter by tags if specified
       if (options.tag && options.tag.length > 0) {
@@ -150,6 +173,12 @@ export const statusCommand = new Command('status')
           console.log(`    Prompt: ${truncatedPrompt}`);
         }
         console.log(`    Created: ${session.createdAt.toLocaleString()}`);
+
+        // Display duration
+        const endTime = (session.status === 'running' || session.status === 'pending')
+          ? undefined
+          : session.updatedAt;
+        console.log(`    Duration: ${formatDuration(session.createdAt, endTime)}`);
 
         // Display heartbeat age for running sessions
         if (session.status === 'running') {
