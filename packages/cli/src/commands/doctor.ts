@@ -1,7 +1,11 @@
 import { Command } from 'commander';
+import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+
+const require = createRequire(import.meta.url);
+const { version: CURRENT_VERSION } = require('../../package.json') as { version: string };
 
 const CONFIG_DIR = '.claudetree';
 const CONFIG_FILE = 'config.json';
@@ -218,6 +222,55 @@ async function checkDiskSpace(): Promise<CheckResult> {
   }
 }
 
+async function checkLatestVersion(): Promise<CheckResult> {
+  try {
+    const stdout = execSync('npm view @claudetree/cli version 2>/dev/null', {
+      stdio: 'pipe',
+      encoding: 'utf-8',
+      timeout: 5000,
+    });
+    const latest = stdout.trim();
+
+    if (latest === CURRENT_VERSION) {
+      return {
+        name: 'CLI Version',
+        status: 'pass',
+        message: `v${CURRENT_VERSION} (latest)`,
+      };
+    }
+
+    // Compare versions
+    const [curMajor = 0, curMinor = 0, curPatch = 0] = CURRENT_VERSION.split('.').map(Number);
+    const [latMajor = 0, latMinor = 0, latPatch = 0] = latest.split('.').map(Number);
+
+    const isBehind =
+      latMajor > curMajor ||
+      (latMajor === curMajor && latMinor > curMinor) ||
+      (latMajor === curMajor && latMinor === curMinor && latPatch > curPatch);
+
+    if (isBehind) {
+      return {
+        name: 'CLI Version',
+        status: 'warn',
+        message: `v${CURRENT_VERSION} (latest: v${latest})`,
+        fix: 'Run: npm install -g @claudetree/cli@latest',
+      };
+    }
+
+    return {
+      name: 'CLI Version',
+      status: 'pass',
+      message: `v${CURRENT_VERSION}`,
+    };
+  } catch {
+    return {
+      name: 'CLI Version',
+      status: 'pass',
+      message: `v${CURRENT_VERSION} (could not check for updates)`,
+    };
+  }
+}
+
 function printResult(result: CheckResult): void {
   const icon = ICONS[result.status];
   console.log(`  ${icon} ${COLORS.bold}${result.name}${COLORS.reset}`);
@@ -235,6 +288,7 @@ export const doctorCommand = new Command('doctor')
     console.log(`${COLORS.dim}Checking your environment...${COLORS.reset}\n`);
 
     const checks = [
+      checkLatestVersion,
       checkNodeVersion,
       checkGitRepo,
       checkClaudeCli,

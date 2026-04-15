@@ -156,7 +156,13 @@ ct web       # Webダッシュボード http://localhost:3000
 | `ct config` | 設定の表示・変更（`ct config set github.owner myorg`） |
 | `ct web` | Webダッシュボード起動（localhost:3000） |
 | `ct clean` | 完了済みworktree削除 |
-| `ct doctor` | 環境確認：Node、Git、Claude CLI、GitHub |
+| `ct doctor` | 環境確認：Node、Git、Claude CLI、GitHub、バージョン |
+| `ct inspect <id>` | セッション詳細情報（トークン、コスト、進行状況、タグ） |
+| `ct cost` | コスト分析：日別チャート、バッチ別コスト、予算監視 |
+| `ct tag <id> add/remove <tags>` | セッションタグの追加/削除 |
+| `ct rerun <id>` | 失敗/完了セッションの再実行 |
+| `ct cleanup` | 完了/失敗セッション + worktreeの一括削除 |
+| `ct completion [shell]` | シェル自動補完スクリプト生成（bash/zsh/fish） |
 
 ### Startオプション
 

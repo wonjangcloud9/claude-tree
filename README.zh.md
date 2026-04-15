@@ -156,7 +156,13 @@ ct web              # Web仪表板 http://localhost:3000
 | `ct config` | 查看或修改配置（`ct config set github.owner myorg`） |
 | `ct web` | 启动Web仪表板（localhost:3000） |
 | `ct clean` | 清理已完成的worktree |
-| `ct doctor` | 检查环境设置：Node、Git、Claude CLI、GitHub |
+| `ct doctor` | 检查环境设置：Node、Git、Claude CLI、GitHub、版本 |
+| `ct inspect <id>` | 会话详细信息（令牌、费用、进度、标签） |
+| `ct cost` | 费用分析：每日图表、批次费用、预算监控 |
+| `ct tag <id> add/remove <tags>` | 添加/删除会话标签 |
+| `ct rerun <id>` | 重新运行失败/已完成的会话 |
+| `ct cleanup` | 批量清理已完成/失败的会话 + worktree |
+| `ct completion [shell]` | 生成Shell自动补全脚本（bash/zsh/fish） |
 
 ### Start选项
 

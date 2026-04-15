@@ -1,5 +1,15 @@
 # @claudetree/cli
 
+## 0.21.1
+
+### Patch Changes
+
+- feat: add npm version check to ct doctor + update ja/zh READMEs
+
+  - ct doctor now checks if installed CLI version is latest on npm, suggests upgrade if behind
+  - Updated Japanese README with new commands (inspect, cost, tag, rerun, cleanup, completion)
+  - Updated Chinese README with new commands
+
 ## 0.21.0
 
 ### Minor Changes
