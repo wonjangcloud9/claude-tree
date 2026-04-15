@@ -1,5 +1,17 @@
 # @claudetree/cli
 
+## 0.19.0
+
+### Minor Changes
+
+- feat: add ct inspect and ct cost commands
+
+  - New `ct inspect <id>` command: one-stop session detail view with status, tokens, cost, tags, progress, events count, worktree status, and actionable commands
+  - New `ct cost` command: cost analytics with daily breakdown, bar chart visualization, per-batch cost tracking, and budget warnings
+    - `--budget <usd>` flag for daily budget monitoring with EXCEEDED/approaching/within-budget status
+    - `--batch <batchId>` to filter costs by bustercall batch
+    - `--days <n>` to configure analysis window
+
 ## 0.18.0
 
 ### Minor Changes
