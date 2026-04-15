@@ -1,5 +1,17 @@
 # @claudetree/cli
 
+## 0.20.1
+
+### Patch Changes
+
+- docs: update README and CLI help with all new commands and features
+
+  - README.md: document ct inspect, ct cost, ct tag, ct rerun, ct cleanup commands
+  - README.md: update bustercall section with --resume, --sort, --review, batch ID, smart analysis
+  - README.md: add Session Management section with usage examples
+  - README.ko.md: add new command entries to CLI table
+  - CLI help text: add bustercall and session management sections
+
 ## 0.20.0
 
 ### Minor Changes

@@ -158,6 +158,11 @@ ct web              # Web dashboard at http://localhost:3000
 | `ct web` | Launch web dashboard at localhost:3000 |
 | `ct clean` | Remove finished worktrees |
 | `ct doctor` | Verify setup: Node, Git, Claude CLI, GitHub |
+| `ct inspect <id>` | Detailed session info (tokens, cost, progress, tags) |
+| `ct cost` | Cost analytics with daily breakdown and budget monitoring |
+| `ct tag <id> add/remove <tags>` | Add or remove tags from a session |
+| `ct rerun <id>` | Rerun a failed/completed session |
+| `ct cleanup` | Smart batch cleanup of finished sessions + worktrees |
 
 ### Start Options
 
@@ -300,14 +305,37 @@ ct batch --label bug --limit 10
 | `--label <label>` | Filter issues by GitHub label |
 | `--parallel <n>` | Number of parallel sessions (default: 3) |
 | `--max-cost <usd>` | Budget limit per session |
-| `--dry-run` | Preview issues without starting sessions |
+| `--dry-run` | Preview with smart complexity analysis (S/M/L/XL) |
+| `--sort <strategy>` | Sort issues: `priority`, `newest`, `oldest` |
+| `--resume <batchId>` | Retry only failed sessions from a previous batch |
+| `-R, --review` | Auto-review after each session (Writer/Reviewer pattern) |
+| `--retry <n>` | Auto-retry failed sessions (0-5) |
+| `-S, --sequential` | Force all issues to run sequentially |
 
 ### Features
 
-- **Conflict Detection**: Automatically detects issues that modify the same files and runs them sequentially
+- **Batch ID Tracking**: Every bustercall run gets a unique batch ID for session grouping
+- **Smart Analysis**: Dry-run shows complexity (S/M/L/XL), category, and estimated time
+- **Conflict Detection**: Automatically detects issues that modify shared files and runs them sequentially
+- **Writer/Reviewer Pattern**: `--review` auto-spawns a review session after each completion
+- **Resume Mode**: `--resume <batchId>` retries only failed sessions from a previous run
+- **Priority Sorting**: `--sort priority` processes high-priority issues first (critical > urgent > high > medium > low)
 - **PR Filtering**: Skips issues that already have open PRs
-- **Progress Tracking**: Real-time status updates for all sessions
-- **Graceful Handling**: Continues processing even if some sessions fail
+- **Progress Tracking**: Real-time status updates with ETA for all sessions
+
+```bash
+# Smart analysis before running
+ct auto --label bug --dry-run --sort priority
+
+# Run with auto-review (Writer/Reviewer pattern)
+ct auto --label feature --parallel 5 --review
+
+# Resume failed sessions from a previous batch
+ct auto --resume batch-abc12345
+
+# View sessions from a specific batch
+ct status --batch batch-abc12345
+```
 
 ## Dependency Chain (NEW)
 
@@ -380,6 +408,60 @@ Claude will:
 2. Identify public APIs and types
 3. Generate README.md with installation, usage, API reference
 4. Create docs/ folder for detailed documentation
+
+## Session Management
+
+### Inspect Sessions
+
+Get a detailed one-stop view of any session:
+
+```bash
+ct inspect abc123    # By session ID prefix
+ct inspect 42        # By issue number
+ct inspect abc --json
+```
+
+Shows: status, tokens, cost, progress steps, tags, batch info, rerun history, worktree status, and actionable commands.
+
+### Cost Analytics
+
+```bash
+ct cost                      # Last 7 days summary
+ct cost --days 30            # Last 30 days
+ct cost --budget 5.00        # Daily budget with warnings
+ct cost --batch batch-abc    # Filter by bustercall batch
+ct cost --json               # Machine-readable output
+```
+
+Features: daily breakdown with bar chart, per-batch cost tracking, budget monitoring (EXCEEDED / approaching / within-budget).
+
+### Tag Management
+
+```bash
+ct tag abc123 add urgent feature    # Add tags
+ct tag abc123 remove urgent         # Remove tags
+ct status --tag urgent              # Filter by tag
+ct status --state failed            # Filter by status
+ct status --batch batch-abc         # Filter by batch
+```
+
+### Rerun Sessions
+
+```bash
+ct rerun abc123                    # Rerun with same config
+ct rerun abc123 --template refactor  # Override template
+ct rerun abc123 --keep             # Keep original session
+```
+
+### Smart Cleanup
+
+```bash
+ct cleanup                         # Remove completed + failed sessions
+ct cleanup --dry-run               # Preview what would be removed
+ct cleanup --status failed         # Only clean failed sessions
+ct cleanup --older-than 7d         # Only clean old sessions
+ct cleanup --batch batch-abc       # Clean specific batch
+```
 
 ## Architecture
 

@@ -157,6 +157,11 @@ ct web              # 웹 대시보드 http://localhost:3000
 | `ct web` | 웹 대시보드 실행 (localhost:3000) |
 | `ct clean` | 완료된 worktree 정리 |
 | `ct doctor` | 환경 확인: Node, Git, Claude CLI, GitHub |
+| `ct inspect <id>` | 세션 상세 정보 (토큰, 비용, 진행상황, 태그) |
+| `ct cost` | 비용 분석: 일별 차트, 배치별 비용, 예산 모니터링 |
+| `ct tag <id> add/remove <tags>` | 세션 태그 추가/삭제 |
+| `ct rerun <id>` | 실패/완료된 세션 재실행 |
+| `ct cleanup` | 완료/실패 세션 + worktree 일괄 정리 |
 
 ### Start 옵션
 

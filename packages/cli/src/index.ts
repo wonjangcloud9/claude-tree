@@ -72,7 +72,18 @@ Quick Start:
   $ ct start <github-issue-url>          # fire and forget
   $ ct status                            # monitor progress
   $ ct pr --all                          # create PRs for completed sessions
-  $ ct stats                             # view cost analytics
+
+Bustercall (batch automation):
+  $ ct auto --label bug --parallel 5     # auto-process issues
+  $ ct auto --dry-run --sort priority    # preview with analysis
+  $ ct auto --resume <batchId>           # retry failed sessions
+
+Session management:
+  $ ct inspect <id>                      # detailed session info
+  $ ct cost --budget 5.00               # cost analytics
+  $ ct rerun <id>                       # rerun failed session
+  $ ct tag <id> add urgent              # manage tags
+  $ ct cleanup --dry-run                # smart cleanup
 
 Docs: https://github.com/wonjangcloud9/claude-tree`);
 
