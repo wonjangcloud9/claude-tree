@@ -1,5 +1,17 @@
 # @claudetree/cli
 
+## 0.17.0
+
+### Minor Changes
+
+- feat: add ct rerun command and batch filter for status
+
+  - New `ct rerun <id>` command to rerun failed/completed sessions with same issue
+    - Preserves original tags, adds `rerun:<id>` tag for tracking
+    - Supports `--template`, `--retry`, `--tag` overrides
+    - `--keep` flag to preserve original session
+  - New `ct status --batch <batchId>` filter to view sessions from a specific bustercall run
+
 ## 0.16.0
 
 ### Minor Changes

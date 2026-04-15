@@ -301,6 +301,61 @@ describe('statusCommand', () => {
       });
     });
 
+    describe('with --batch filter', () => {
+      it('should filter sessions by batch ID', async () => {
+        const sessions = [
+          {
+            id: 'session-in-batch',
+            worktreeId: 'wt-1',
+            claudeSessionId: null,
+            status: 'completed' as const,
+            issueNumber: 1,
+            prompt: null,
+            createdAt: new Date('2024-01-15T10:00:00Z'),
+            updatedAt: new Date('2024-01-15T10:05:00Z'),
+            processId: null,
+            osProcessId: null,
+            lastHeartbeat: null,
+            errorCount: 0,
+            worktreePath: null,
+            usage: null,
+            progress: null,
+            retryCount: 0,
+            lastError: null,
+            tags: ['bustercall:batch-abc123'],
+          },
+          {
+            id: 'session-outside',
+            worktreeId: 'wt-2',
+            claudeSessionId: null,
+            status: 'completed' as const,
+            issueNumber: 2,
+            prompt: null,
+            createdAt: new Date('2024-01-15T10:00:00Z'),
+            updatedAt: new Date('2024-01-15T10:05:00Z'),
+            processId: null,
+            osProcessId: null,
+            lastHeartbeat: null,
+            errorCount: 0,
+            worktreePath: null,
+            usage: null,
+            progress: null,
+            retryCount: 0,
+            lastError: null,
+            tags: [],
+          },
+        ];
+        mockFindAll.mockResolvedValue(sessions);
+
+        await statusCommand.parseAsync(['node', 'test', '--batch', 'batch-abc123']);
+
+        const allCalls = consoleLogSpy.mock.calls.flat().join(' ');
+        // ID is truncated to 8 chars: "session-" matches both, so check for Issue #
+        expect(allCalls).toContain('Issue #1');
+        expect(allCalls).not.toContain('Issue #2');
+      });
+    });
+
     describe('with --json option', () => {
       it('should output sessions as JSON', async () => {
         const session = {
