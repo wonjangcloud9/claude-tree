@@ -1,0 +1,200 @@
+import { Command } from 'commander';
+import { join } from 'node:path';
+import { access, writeFile } from 'node:fs/promises';
+import { FileSessionRepository } from '@claudetree/core';
+import type { Session } from '@claudetree/shared';
+
+const CONFIG_DIR = '.claudetree';
+
+interface ReportOptions {
+  output?: string;
+  since?: string;
+  batch?: string;
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
+  const min = Math.floor(ms / 60_000);
+  if (min < 60) return `${min}m`;
+  const hours = Math.floor(min / 60);
+  return `${hours}h ${min % 60}m`;
+}
+
+function getDateKey(date: Date): string {
+  return date.toISOString().split('T')[0] ?? '';
+}
+
+function buildReport(sessions: Session[], title: string): string {
+  const lines: string[] = [];
+  const now = new Date();
+
+  lines.push(`# ${title}`);
+  lines.push(`\nGenerated: ${now.toISOString()}\n`);
+
+  // Summary
+  const completed = sessions.filter((s) => s.status === 'completed');
+  const failed = sessions.filter((s) => s.status === 'failed');
+  const running = sessions.filter((s) => s.status === 'running');
+  const totalCost = sessions.reduce((sum, s) => sum + (s.usage?.totalCostUsd ?? 0), 0);
+  const totalTokens = sessions.reduce(
+    (sum, s) => sum + (s.usage?.inputTokens ?? 0) + (s.usage?.outputTokens ?? 0), 0,
+  );
+  const successRate = sessions.length > 0
+    ? Math.round((completed.length / sessions.length) * 100)
+    : 0;
+
+  lines.push('## Summary\n');
+  lines.push(`| Metric | Value |`);
+  lines.push(`|--------|-------|`);
+  lines.push(`| Total Sessions | ${sessions.length} |`);
+  lines.push(`| Completed | ${completed.length} |`);
+  lines.push(`| Failed | ${failed.length} |`);
+  lines.push(`| Running | ${running.length} |`);
+  lines.push(`| Success Rate | ${successRate}% |`);
+  lines.push(`| Total Cost | $${totalCost.toFixed(4)} |`);
+  lines.push(`| Total Tokens | ${totalTokens.toLocaleString()} |`);
+  if (sessions.length > 0) {
+    lines.push(`| Avg Cost/Session | $${(totalCost / sessions.length).toFixed(4)} |`);
+  }
+
+  // Daily breakdown
+  const dailyCosts = new Map<string, { cost: number; count: number }>();
+  for (const s of sessions) {
+    const key = getDateKey(new Date(s.createdAt));
+    const existing = dailyCosts.get(key) ?? { cost: 0, count: 0 };
+    existing.cost += s.usage?.totalCostUsd ?? 0;
+    existing.count++;
+    dailyCosts.set(key, existing);
+  }
+
+  if (dailyCosts.size > 0) {
+    lines.push('\n## Daily Breakdown\n');
+    lines.push(`| Date | Sessions | Cost |`);
+    lines.push(`|------|----------|------|`);
+    const sorted = [...dailyCosts.entries()].sort(([a], [b]) => a.localeCompare(b));
+    for (const [date, data] of sorted) {
+      lines.push(`| ${date} | ${data.count} | $${data.cost.toFixed(4)} |`);
+    }
+  }
+
+  // Batch breakdown
+  const batches = new Map<string, { cost: number; count: number; completed: number; failed: number }>();
+  for (const s of sessions) {
+    const batchTag = s.tags?.find((t) => t.startsWith('bustercall:'));
+    if (batchTag) {
+      const existing = batches.get(batchTag) ?? { cost: 0, count: 0, completed: 0, failed: 0 };
+      existing.cost += s.usage?.totalCostUsd ?? 0;
+      existing.count++;
+      if (s.status === 'completed') existing.completed++;
+      if (s.status === 'failed') existing.failed++;
+      batches.set(batchTag, existing);
+    }
+  }
+
+  if (batches.size > 0) {
+    lines.push('\n## Batch Summary\n');
+    lines.push(`| Batch | Sessions | Completed | Failed | Cost |`);
+    lines.push(`|-------|----------|-----------|--------|------|`);
+    for (const [batch, data] of batches) {
+      const id = batch.replace('bustercall:', '');
+      lines.push(`| ${id} | ${data.count} | ${data.completed} | ${data.failed} | $${data.cost.toFixed(4)} |`);
+    }
+  }
+
+  // Session details
+  lines.push('\n## Session Details\n');
+  lines.push(`| ID | Status | Issue | Duration | Cost | Tags |`);
+  lines.push(`|----|--------|-------|----------|------|------|`);
+
+  for (const s of sessions) {
+    const id = s.id.slice(0, 8);
+    const issue = s.issueNumber ? `#${s.issueNumber}` : '-';
+    const duration = formatDuration(
+      new Date(s.updatedAt).getTime() - new Date(s.createdAt).getTime(),
+    );
+    const cost = s.usage ? `$${s.usage.totalCostUsd.toFixed(4)}` : '-';
+    const tags = s.tags?.filter((t) => !t.startsWith('bustercall:')).join(', ') || '-';
+    lines.push(`| ${id} | ${s.status} | ${issue} | ${duration} | ${cost} | ${tags} |`);
+  }
+
+  // Failed sessions detail
+  if (failed.length > 0) {
+    lines.push('\n## Failed Sessions\n');
+    for (const s of failed) {
+      const issue = s.issueNumber ? `#${s.issueNumber}` : 'N/A';
+      lines.push(`### ${s.id.slice(0, 8)} (${issue})\n`);
+      if (s.lastError) {
+        lines.push(`**Error:** ${s.lastError}\n`);
+      }
+      if (s.retryCount > 0) {
+        lines.push(`**Retries:** ${s.retryCount}\n`);
+      }
+    }
+  }
+
+  lines.push('\n---\n*Generated by [claudetree](https://github.com/wonjangcloud9/claude-tree)*\n');
+
+  return lines.join('\n');
+}
+
+export const reportCommand = new Command('report')
+  .description('Generate a markdown report of session activity')
+  .option('-o, --output <file>', 'Output file path (default: stdout)')
+  .option('--since <duration>', 'Time period: 24h, 7d, 30d (default: all)')
+  .option('-b, --batch <batchId>', 'Filter by bustercall batch ID')
+  .action(async (options: ReportOptions) => {
+    const cwd = process.cwd();
+    const configDir = join(cwd, CONFIG_DIR);
+
+    try {
+      await access(configDir);
+    } catch {
+      console.error('Error: claudetree not initialized. Run "ct init" first.');
+      process.exit(1);
+    }
+
+    const sessionRepo = new FileSessionRepository(configDir);
+    let sessions = await sessionRepo.findAll();
+
+    // Time filter
+    if (options.since) {
+      const match = options.since.match(/^(\d+)([hdwm])$/);
+      if (match) {
+        const val = parseInt(match[1]!, 10);
+        const unit = match[2]!;
+        const msMap: Record<string, number> = {
+          h: 3_600_000, d: 86_400_000, w: 604_800_000, m: 2_592_000_000,
+        };
+        const cutoff = Date.now() - val * (msMap[unit] ?? 86_400_000);
+        sessions = sessions.filter(
+          (s) => new Date(s.createdAt).getTime() >= cutoff,
+        );
+      }
+    }
+
+    // Batch filter
+    if (options.batch) {
+      const batchTag = options.batch.startsWith('bustercall:')
+        ? options.batch
+        : `bustercall:${options.batch}`;
+      sessions = sessions.filter((s) => s.tags?.includes(batchTag));
+    }
+
+    if (sessions.length === 0) {
+      console.log('No sessions found for the specified criteria.');
+      return;
+    }
+
+    const title = options.batch
+      ? `claudetree Report - Batch ${options.batch}`
+      : `claudetree Report`;
+
+    const report = buildReport(sessions, title);
+
+    if (options.output) {
+      await writeFile(options.output, report, 'utf-8');
+      console.log(`Report saved to: ${options.output}`);
+    } else {
+      console.log(report);
+    }
+  });

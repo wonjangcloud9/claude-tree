@@ -116,8 +116,25 @@ ct status
 | `ct web` | Launch web dashboard at localhost:3000 |
 | `ct list` | List all worktrees |
 | `ct clean` | Remove finished worktrees |
-| `ct doctor` | Verify setup: Node, Git, Claude CLI |
+| `ct doctor` | Verify setup + npm version check |
 | `ct init` | Initialize claudetree in your project |
+| `ct inspect <id>` | One-stop session detail view |
+| `ct cost` | Cost analytics with daily breakdown + budget monitoring |
+| `ct tag <id> add/remove <tags>` | Manage session tags |
+| `ct rerun <id>` | Rerun a failed/completed session |
+| `ct cleanup` | Smart batch cleanup of sessions + worktrees |
+| `ct report` | Generate markdown report for team sharing |
+| `ct completion [shell]` | Shell autocomplete (bash/zsh/fish) |
+
+### Bustercall Enhancements
+
+```bash
+ct auto --sort priority --review      # Priority sort + auto-review
+ct auto --dry-run                     # Smart analysis: S/M/L/XL complexity
+ct auto --resume batch-abc123         # Retry only failed sessions
+ct status --batch batch-abc123        # Filter by batch
+ct status --state failed              # Filter by status
+```
 
 ## TDD Mode (Default)
 

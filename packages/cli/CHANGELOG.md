@@ -1,5 +1,17 @@
 # @claudetree/cli
 
+## 0.22.0
+
+### Minor Changes
+
+- feat: add ct report command for markdown project reports
+
+  - New `ct report` command: generate comprehensive markdown reports with session summary, cost breakdown, success rate, daily stats, batch analysis, and failed session details
+  - `--output <file>` to save report to file
+  - `--since <duration>` to filter by time period
+  - `--batch <batchId>` to filter by bustercall batch
+  - Updated CLI package README with all new commands and bustercall enhancements
+
 ## 0.21.1
 
 ### Patch Changes
