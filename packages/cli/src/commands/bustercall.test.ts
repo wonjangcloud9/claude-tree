@@ -455,5 +455,35 @@ describe('bustercallCommand', () => {
         );
       });
     });
+
+    describe('smart analysis in dry-run', () => {
+      it('should show complexity analysis', async () => {
+        mockListIssues.mockResolvedValue([
+          { number: 101, title: 'Fix typo', labels: ['easy'], body: '' },
+          { number: 102, title: 'Add feature', labels: ['feature'], body: 'Long description...' },
+        ]);
+
+        await bustercallCommand.parseAsync(['node', 'test', '--dry-run']);
+
+        const allCalls = consoleLogSpy.mock.calls.flat().join('\n');
+        expect(allCalls).toContain('Complexity Analysis');
+        expect(allCalls).toContain('Estimated time');
+      });
+    });
+
+    describe('with --review option', () => {
+      it('should show Writer/Reviewer info in dry-run', async () => {
+        mockListIssues.mockResolvedValue([
+          { number: 101, title: 'Fix bug', labels: [], body: '' },
+        ]);
+
+        await bustercallCommand.parseAsync([
+          'node', 'test', '--review', '--dry-run',
+        ]);
+
+        const allCalls = consoleLogSpy.mock.calls.flat().join('\n');
+        expect(allCalls).toContain('Writer/Reviewer');
+      });
+    });
   });
 });

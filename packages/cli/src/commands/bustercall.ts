@@ -15,6 +15,7 @@ import {
   printStatus,
   waitForSessionCreated,
   sortIssues,
+  analyzeIssues,
   type BustercallItem,
 } from './bustercall/index.js';
 import type { SortStrategy } from './bustercall/issueSorter.js';
@@ -49,6 +50,7 @@ interface BustercallOptions {
   tag?: string[];
   resume?: string;
   sort?: string;
+  review: boolean;
 }
 
 interface Config {
@@ -159,6 +161,7 @@ export const bustercallCommand = new Command('bustercall')
   .option('--tag <tags...>', 'Tags for sessions started by this bustercall')
   .option('--resume <batchId>', 'Resume a previous batch (retry only failed sessions)')
   .option('--sort <strategy>', 'Sort issues before processing (priority, newest, oldest)')
+  .option('-R, --review', 'Auto-review: run a review session after each completion (Writer/Reviewer pattern)', false)
   .action(async (options: BustercallOptions) => {
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
@@ -334,12 +337,24 @@ export const bustercallCommand = new Command('bustercall')
 
     // Dry run mode
     if (options.dryRun) {
+      // Smart issue analysis
+      const { analyses, totalEstimatedMinutes, parallelEstimatedMinutes, complexityCounts } = analyzeIssues(issues);
+
       console.log('\n[Dry Run] Would start sessions for:\n');
+
+      const COMPLEXITY_COLORS: Record<string, string> = {
+        S: '\x1b[32m', M: '\x1b[36m', L: '\x1b[33m', XL: '\x1b[31m',
+      };
 
       if (conflicting.length > 0) {
         console.log('\x1b[33m⚠️  Potential Conflict Issues (will run sequentially):\x1b[0m');
         conflicting.forEach((issue, i) => {
-          console.log(`  ${i + 1}. #${issue.number} - ${issue.title}`);
+          const analysis = analyses.find((a) => a.issue.number === issue.number);
+          const sizeTag = analysis
+            ? ` ${COMPLEXITY_COLORS[analysis.complexity]}[${analysis.complexity}]\x1b[0m`
+            : '';
+          const catTag = analysis ? ` \x1b[90m(${analysis.category})\x1b[0m` : '';
+          console.log(`  ${i + 1}. #${issue.number} - ${issue.title}${sizeTag}${catTag}`);
           if (issue.labels.length > 0) {
             console.log(`     Labels: ${issue.labels.join(', ')}`);
           }
@@ -350,11 +365,31 @@ export const bustercallCommand = new Command('bustercall')
       if (safe.length > 0) {
         console.log('\x1b[32m✓ Safe Issues (will run in parallel):\x1b[0m');
         safe.forEach((issue, i) => {
-          console.log(`  ${i + 1}. #${issue.number} - ${issue.title}`);
+          const analysis = analyses.find((a) => a.issue.number === issue.number);
+          const sizeTag = analysis
+            ? ` ${COMPLEXITY_COLORS[analysis.complexity]}[${analysis.complexity}]\x1b[0m`
+            : '';
+          const catTag = analysis ? ` \x1b[90m(${analysis.category})\x1b[0m` : '';
+          console.log(`  ${i + 1}. #${issue.number} - ${issue.title}${sizeTag}${catTag}`);
           if (issue.labels.length > 0) {
             console.log(`     Labels: ${issue.labels.join(', ')}`);
           }
         });
+      }
+
+      // Complexity summary
+      console.log('\n\x1b[1mComplexity Analysis:\x1b[0m');
+      const sizeParts: string[] = [];
+      if (complexityCounts.S > 0) sizeParts.push(`\x1b[32m${complexityCounts.S}S\x1b[0m`);
+      if (complexityCounts.M > 0) sizeParts.push(`\x1b[36m${complexityCounts.M}M\x1b[0m`);
+      if (complexityCounts.L > 0) sizeParts.push(`\x1b[33m${complexityCounts.L}L\x1b[0m`);
+      if (complexityCounts.XL > 0) sizeParts.push(`\x1b[31m${complexityCounts.XL}XL\x1b[0m`);
+      console.log(`  Size distribution: ${sizeParts.join(' | ')}`);
+      console.log(`  Estimated time (sequential): ~${totalEstimatedMinutes}m`);
+      console.log(`  Estimated time (parallel):   ~${parallelEstimatedMinutes}m`);
+
+      if (options.review) {
+        console.log(`  \x1b[36mWriter/Reviewer:\x1b[0m enabled (auto-review after each session)`);
       }
 
       if (conflicting.length > 0 && !options.sequential) {
@@ -433,6 +468,19 @@ export const bustercallCommand = new Command('bustercall')
         });
         item.completedAt = Date.now();
         await updateItemStatus(itemIndex, 'completed');
+
+        // Writer/Reviewer pattern: auto-spawn review session
+        if (options.review) {
+          try {
+            await startSession(item.issue.number, {
+              template: 'review',
+              cwd,
+              tags: [...(options.tag ?? []), 'auto-review'],
+            });
+          } catch {
+            // Review failure is non-critical - don't fail the main session
+          }
+        }
       } catch (err) {
         item.completedAt = Date.now();
         await updateItemStatus(itemIndex, 'failed', err instanceof Error ? err.message : 'Unknown error');

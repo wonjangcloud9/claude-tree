@@ -1,5 +1,16 @@
 # @claudetree/cli
 
+## 0.18.0
+
+### Minor Changes
+
+- feat: smart issue analysis + Writer/Reviewer pattern for bustercall
+
+  - Smart issue categorization: analyze complexity (S/M/L/XL) from labels and body content
+  - Dry-run now shows complexity distribution, estimated time (sequential vs parallel), and category
+  - New `--review` flag enables Writer/Reviewer pattern: auto-spawns review session after each completion
+  - Issue analyzer detects category (bugfix, feature, refactor, docs, test) from labels and title
+
 ## 0.17.0
 
 ### Minor Changes

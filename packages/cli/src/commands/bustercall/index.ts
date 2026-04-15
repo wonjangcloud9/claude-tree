@@ -14,3 +14,10 @@ export {
 } from './sessionManager.js';
 
 export { sortIssues, PRIORITY_LABELS } from './issueSorter.js';
+
+export {
+  analyzeIssue,
+  analyzeIssues,
+  type IssueAnalysis,
+  type ComplexityLevel,
+} from './issueAnalyzer.js';
