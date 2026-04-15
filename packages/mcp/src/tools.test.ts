@@ -67,7 +67,10 @@ describe('MCP Tools', () => {
     expect(tools.has('ct_pr')).toBe(true);
     expect(tools.has('ct_config')).toBe(true);
     expect(tools.has('ct_summary')).toBe(true);
-    expect(tools.size).toBe(11);
+    expect(tools.has('ct_rerun')).toBe(true);
+    expect(tools.has('ct_tag')).toBe(true);
+    expect(tools.has('ct_cost')).toBe(true);
+    expect(tools.size).toBe(14);
   });
 
   describe('ct_sessions_list', () => {
