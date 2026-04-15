@@ -143,7 +143,20 @@ export const statusCommand = new Command('status')
         return;
       }
 
-      console.log('Sessions:\n');
+      // Summary banner
+      const runningCount = sessions.filter((s) => s.status === 'running').length;
+      const completedCount = sessions.filter((s) => s.status === 'completed').length;
+      const failedCount = sessions.filter((s) => s.status === 'failed').length;
+      const pendingCount = sessions.filter((s) => s.status === 'pending' || s.status === 'paused').length;
+      const bannerCost = sessions.reduce((sum, s) => sum + (s.usage?.totalCostUsd ?? 0), 0);
+
+      const parts: string[] = [];
+      if (runningCount > 0) parts.push(`${GREEN}${runningCount} running${RESET}`);
+      if (completedCount > 0) parts.push(`${CYAN}${completedCount} completed${RESET}`);
+      if (failedCount > 0) parts.push(`\x1b[31m${failedCount} failed${RESET}`);
+      if (pendingCount > 0) parts.push(`\x1b[33m${pendingCount} pending${RESET}`);
+
+      console.log(`Sessions: ${parts.join(' | ')} ${DIM}($${bannerCost.toFixed(4)})${RESET}\n`);
 
       let totalCost = 0;
       let totalInputTokens = 0;

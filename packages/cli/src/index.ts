@@ -8,6 +8,7 @@ import { bustercallCommand } from './commands/bustercall.js';
 import { chainCommand } from './commands/chain.js';
 import { cleanCommand } from './commands/clean.js';
 import { cleanupCommand } from './commands/cleanup.js';
+import { completionCommand } from './commands/completion.js';
 import { configCommand } from './commands/config.js';
 import { costCommand } from './commands/cost.js';
 import { diffCommand } from './commands/diff.js';
@@ -64,6 +65,7 @@ program.addCommand(listCommand);
 program.addCommand(cleanCommand);
 program.addCommand(cleanupCommand);
 program.addCommand(archiveCommand);
+program.addCommand(completionCommand);
 program.addCommand(doctorCommand);
 
 program.addHelpText('after', `

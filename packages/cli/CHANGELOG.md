@@ -1,5 +1,15 @@
 # @claudetree/cli
 
+## 0.21.0
+
+### Minor Changes
+
+- feat: status summary banner, shell completion, and desktop notifications
+
+  - ct status now shows a colorful summary banner: running/completed/failed counts + total cost
+  - New `ct completion [bash|zsh|fish]` command for shell autocomplete setup
+  - Bustercall sends macOS/Linux desktop notification when batch completes
+
 ## 0.20.1
 
 ### Patch Changes

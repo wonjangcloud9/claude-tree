@@ -111,7 +111,9 @@ describe('statusCommand', () => {
 
         await statusCommand.parseAsync(['node', 'test']);
 
-        expect(consoleLogSpy).toHaveBeenCalledWith('Sessions:\n');
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Sessions:'),
+        );
         expect(consoleLogSpy).toHaveBeenCalledWith(
           expect.stringContaining('test-ses')
         );

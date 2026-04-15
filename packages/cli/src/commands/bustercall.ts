@@ -625,6 +625,20 @@ export const bustercallCommand = new Command('bustercall')
       console.log('\n  Slack notification sent.');
     }
 
+    // Desktop notification (macOS/Linux)
+    try {
+      const notifTitle = 'claudetree - Bustercall Complete';
+      const notifBody = `${completed}/${items.length} completed, ${failed} failed (${formatDuration(totalDuration)})`;
+      const platform = process.platform;
+      if (platform === 'darwin') {
+        await execAsync(`osascript -e 'display notification "${notifBody}" with title "${notifTitle}"'`);
+      } else if (platform === 'linux') {
+        await execAsync(`notify-send "${notifTitle}" "${notifBody}" 2>/dev/null || true`);
+      }
+    } catch {
+      // Desktop notification is best-effort
+    }
+
     if (failed > 0) {
       console.log(`\n  Retry failed:      \x1b[36mct auto --resume ${batchId}\x1b[0m`);
     }
