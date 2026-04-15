@@ -196,7 +196,11 @@ Options:
   -T, --template <template>  Session template to use
   -e, --exclude <numbers>    Exclude issue numbers (comma-separated)
   -S, --sequential           Force sequential execution
-  --dry-run                  Show target issues without starting`}
+  --dry-run                  Smart analysis: S/M/L/XL complexity + estimated time
+  --sort <strategy>          Sort: priority, newest, oldest
+  --resume <batchId>         Retry only failed sessions from previous batch
+  -R, --review               Auto-review after each session (Writer/Reviewer pattern)
+  --retry <n>                Auto-retry failed sessions (0-5)`}
         language="bash"
       />
 
@@ -205,14 +209,20 @@ Options:
         code={`# Auto-fetch and process open issues
 ct auto
 
-# Filter by label
-ct auto --label bug
+# Filter by label with priority sorting
+ct auto --label bug --sort priority
 
-# Preview target issues
+# Smart analysis preview (complexity + estimated time)
 ct auto --dry-run
 
-# 5 parallel sessions with bugfix template
-ct auto -P 5 --template bugfix`}
+# Writer/Reviewer pattern: auto-review after each session
+ct auto --review --parallel 5
+
+# Resume only failed sessions from previous batch
+ct auto --resume batch-abc12345
+
+# View sessions from a specific batch
+ct status --batch batch-abc12345`}
         language="bash"
       />
 
@@ -451,6 +461,130 @@ Options:
 Options:
   -p, --port <port>    Port number (default: 3000)
   --no-open            Don't open browser automatically`}
+        language="bash"
+      />
+
+      <h2 id="ct-inspect" style={sectionTitle}>
+        ct inspect
+      </h2>
+      <p style={paragraph}>
+        One-stop detailed view of a session: status, tokens, cost, progress, tags, batch info,
+        and actionable commands.
+      </p>
+      <CodeBlock
+        code={`ct inspect <session> [options]
+
+Arguments:
+  session    Session ID (prefix) or issue number
+
+Options:
+  --json     Output as JSON`}
+        language="bash"
+      />
+
+      <h2 id="ct-cost" style={sectionTitle}>
+        ct cost
+      </h2>
+      <p style={paragraph}>
+        Cost analytics with daily breakdown chart, per-batch tracking, and budget monitoring.
+      </p>
+      <CodeBlock
+        code={`ct cost [options]
+
+Options:
+  -d, --days <n>         Analysis window in days (default: 7)
+  --budget <usd>         Daily budget with warnings (EXCEEDED/approaching/OK)
+  -b, --batch <batchId>  Filter by bustercall batch
+  --json                 Output as JSON`}
+        language="bash"
+      />
+
+      <h2 id="ct-tag" style={sectionTitle}>
+        ct tag
+      </h2>
+      <p style={paragraph}>Add or remove tags from sessions for organization and filtering.</p>
+      <CodeBlock
+        code={`ct tag <session-id> <action> <tags...>
+
+Arguments:
+  session-id    Session ID (prefix match)
+  action        add or remove
+  tags          Tags to add or remove
+
+Examples:
+  ct tag abc123 add urgent feature
+  ct tag abc123 remove urgent`}
+        language="bash"
+      />
+
+      <h2 id="ct-rerun" style={sectionTitle}>
+        ct rerun
+      </h2>
+      <p style={paragraph}>Rerun a failed or completed session with the same issue.</p>
+      <CodeBlock
+        code={`ct rerun <session-id> [options]
+
+Options:
+  -T, --template <template>  Override session template
+  --retry <n>                Override auto-retry count
+  --tag <tags...>            Additional tags
+  --keep                     Keep the original session`}
+        language="bash"
+      />
+
+      <h2 id="ct-cleanup" style={sectionTitle}>
+        ct cleanup
+      </h2>
+      <p style={paragraph}>
+        Smart batch cleanup: remove completed/failed sessions and their worktrees.
+      </p>
+      <CodeBlock
+        code={`ct cleanup [options]
+
+Options:
+  --dry-run                Preview what would be removed
+  --status <status>        completed, failed, or both (default: both)
+  --older-than <duration>  Only remove old sessions (e.g., 24h, 7d)
+  -b, --batch <batchId>    Clean specific bustercall batch`}
+        language="bash"
+      />
+
+      <h2 id="ct-report" style={sectionTitle}>
+        ct report
+      </h2>
+      <p style={paragraph}>
+        Generate a comprehensive markdown report with session summary, cost breakdown,
+        and batch analysis. Useful for team sharing.
+      </p>
+      <CodeBlock
+        code={`ct report [options]
+
+Options:
+  -o, --output <file>      Save to file (default: stdout)
+  --since <duration>       Time period: 24h, 7d, 30d
+  -b, --batch <batchId>    Filter by bustercall batch`}
+        language="bash"
+      />
+
+      <h2 id="ct-completion" style={sectionTitle}>
+        ct completion
+      </h2>
+      <p style={paragraph}>Generate shell completion scripts for tab autocomplete.</p>
+      <CodeBlock
+        code={`ct completion [shell]
+
+Arguments:
+  shell    bash, zsh, or fish (auto-detected if omitted)
+
+Setup:
+  # Bash
+  eval "$(ct completion bash)"
+
+  # Zsh
+  eval "$(ct completion zsh)"
+
+  # Fish
+  ct completion fish > ~/.config/fish/completions/claudetree.fish`}
         language="bash"
       />
     </section>

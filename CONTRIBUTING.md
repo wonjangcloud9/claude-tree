@@ -26,10 +26,11 @@ cd packages/cli && pnpm link --global
 
 ```
 packages/
-├── cli/      # CLI tool (@claudetree/cli)
+├── cli/      # CLI tool (@claudetree/cli) - 33+ commands
 ├── core/     # Domain + Infrastructure (@claudetree/core)
 ├── shared/   # Shared types (@claudetree/shared)
-└── web/      # Next.js dashboard (@claudetree/web)
+├── mcp/      # MCP Server (@claudetree/mcp) - 14 tools
+└── web/      # Next.js 16 dashboard (@claudetree/web) - i18n (en/ko/ja/zh)
 ```
 
 ## Branch Strategy
@@ -74,7 +75,9 @@ pnpm test
 pnpm test -- --watch
 
 # Run specific package tests
-pnpm --filter @claudetree/core test
+pnpm --filter @claudetree/core test:run
+pnpm --filter @claudetree/cli test
+pnpm --filter @claudetree/mcp test:run
 ```
 
 ### 3. Building
