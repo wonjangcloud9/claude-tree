@@ -216,6 +216,91 @@ describe('statusCommand', () => {
       });
     });
 
+    describe('with --state filter', () => {
+      const createMockSession = (overrides: Partial<Session> = {}): Session => ({
+        id: 'test-session-id-123',
+        worktreeId: 'worktree-id-456',
+        claudeSessionId: null,
+        status: 'running',
+        issueNumber: null,
+        prompt: null,
+        createdAt: new Date('2024-01-15T10:30:00Z'),
+        updatedAt: new Date('2024-01-15T10:30:00Z'),
+        processId: null,
+        osProcessId: null,
+        lastHeartbeat: null,
+        errorCount: 0,
+        worktreePath: null,
+        usage: null,
+        progress: null,
+        retryCount: 0,
+        lastError: null,
+        tags: [],
+        ...overrides,
+      });
+
+      it('should filter sessions by status', async () => {
+        const sessions = [
+          createMockSession({ id: 'running-1', status: 'running' }),
+          createMockSession({ id: 'completed-1', status: 'completed' }),
+          createMockSession({ id: 'failed-1', status: 'failed' }),
+        ];
+        mockFindAll.mockResolvedValue(sessions);
+
+        await statusCommand.parseAsync(['node', 'test', '--state', 'completed']);
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining('complete'),
+        );
+        // Should NOT show running or failed sessions
+        const allCalls = consoleLogSpy.mock.calls.flat().join(' ');
+        expect(allCalls).not.toContain('running-1');
+        expect(allCalls).not.toContain('failed-1');
+      });
+
+      it('should show error for invalid state', async () => {
+        mockFindAll.mockResolvedValue([]);
+
+        await statusCommand.parseAsync(['node', 'test', '--state', 'invalid']);
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid state'),
+        );
+      });
+    });
+
+    describe('duration display', () => {
+      it('should display duration for completed sessions', async () => {
+        const session = {
+          id: 'test-session-id-123',
+          worktreeId: 'worktree-id-456',
+          claudeSessionId: null,
+          status: 'completed' as const,
+          issueNumber: null,
+          prompt: null,
+          createdAt: new Date('2024-01-15T10:00:00Z'),
+          updatedAt: new Date('2024-01-15T10:05:30Z'),
+          processId: null,
+          osProcessId: null,
+          lastHeartbeat: null,
+          errorCount: 0,
+          worktreePath: null,
+          usage: null,
+          progress: null,
+          retryCount: 0,
+          lastError: null,
+          tags: [],
+        };
+        mockFindAll.mockResolvedValue([session]);
+
+        await statusCommand.parseAsync(['node', 'test']);
+
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Duration: 5m 30s'),
+        );
+      });
+    });
+
     describe('with --json option', () => {
       it('should output sessions as JSON', async () => {
         const session = {

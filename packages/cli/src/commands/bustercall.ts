@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { access, readFile } from 'node:fs/promises';
 import { spawn, exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import { randomUUID } from 'node:crypto';
 import { Mutex } from 'async-mutex';
 import { GitHubAdapter, SlackNotifier, FileSessionRepository } from '@claudetree/core';
 import type { Issue } from '@claudetree/shared';
@@ -13,8 +14,10 @@ import {
   truncate,
   printStatus,
   waitForSessionCreated,
+  sortIssues,
   type BustercallItem,
 } from './bustercall/index.js';
+import type { SortStrategy } from './bustercall/issueSorter.js';
 
 const execAsync = promisify(exec);
 
@@ -44,6 +47,8 @@ interface BustercallOptions {
   conflictLabels?: string;
   retry: number;
   tag?: string[];
+  resume?: string;
+  sort?: string;
 }
 
 interface Config {
@@ -152,6 +157,8 @@ export const bustercallCommand = new Command('bustercall')
   .option('--conflict-labels <labels>', 'Labels that indicate potential conflicts (comma-separated)')
   .option('--retry <n>', 'Auto-retry failed sessions (default: 0)', '0')
   .option('--tag <tags...>', 'Tags for sessions started by this bustercall')
+  .option('--resume <batchId>', 'Resume a previous batch (retry only failed sessions)')
+  .option('--sort <strategy>', 'Sort issues before processing (priority, newest, oldest)')
   .action(async (options: BustercallOptions) => {
     const cwd = process.cwd();
     const config = await loadConfig(cwd);
@@ -171,78 +178,150 @@ export const bustercallCommand = new Command('bustercall')
       process.exit(1);
     }
 
+    // Generate batch ID for this bustercall run
+    const batchId = `batch-${randomUUID().slice(0, 8)}`;
+    const batchTag = `bustercall:${batchId}`;
+
     const ghAdapter = new GitHubAdapter(ghToken);
-    console.log('Fetching open issues from GitHub...');
+    const sessionRepo = new FileSessionRepository(join(cwd, CONFIG_DIR));
 
     let issues: Issue[];
-    try {
-      issues = await ghAdapter.listIssues(
-        config.github.owner,
-        config.github.repo,
-        {
-          labels: options.label,
-          state: 'open',
-        }
-      );
-    } catch (err) {
-      console.error(`Error fetching issues: ${err instanceof Error ? err.message : err}`);
-      process.exit(1);
-    }
 
-    // Apply exclude filter
-    if (options.exclude) {
-      const excludeSet = new Set(
-        options.exclude.split(',').map((n) => parseInt(n.trim(), 10))
-      );
-      issues = issues.filter((i) => !excludeSet.has(i.number));
-    }
+    // Resume mode: retry only failed sessions from a previous batch
+    if (options.resume) {
+      const resumeBatchTag = options.resume.startsWith('bustercall:')
+        ? options.resume
+        : `bustercall:${options.resume}`;
 
-    // Filter out issues that already have PRs
-    console.log('Checking for existing PRs...');
-    const issuesWithPRs = await getIssuesWithExistingPRs(config.github.owner, config.github.repo);
-    if (issuesWithPRs.size > 0) {
-      const before = issues.length;
-      issues = issues.filter((i) => !issuesWithPRs.has(i.number));
-      const skipped = before - issues.length;
-      if (skipped > 0) {
-        console.log(`Skipped ${skipped} issue(s) with existing PRs`);
+      console.log(`Resuming batch: ${resumeBatchTag}`);
+      const allSessions = await sessionRepo.findAll();
+      const failedSessions = allSessions.filter(
+        (s) => s.status === 'failed' && s.tags?.includes(resumeBatchTag),
+      );
+
+      if (failedSessions.length === 0) {
+        console.log('No failed sessions found for this batch. Nothing to resume.');
+        process.exit(0);
       }
-    }
 
-    // Filter out issues with active/completed sessions (resume support)
-    try {
-      const sessionRepo = new FileSessionRepository(join(cwd, CONFIG_DIR));
-      const sessions = await sessionRepo.findAll();
-      const handledIssues = new Set(
-        sessions
-          .filter((s) => s.status === 'running' || s.status === 'completed')
-          .map((s) => s.issueNumber)
-          .filter((n): n is number => n !== null),
-      );
-      if (handledIssues.size > 0) {
+      const failedIssueNumbers = failedSessions
+        .map((s) => s.issueNumber)
+        .filter((n): n is number => n !== null);
+
+      console.log(`Found ${failedIssueNumbers.length} failed session(s) to retry`);
+
+      // Delete old failed sessions so they can be recreated
+      for (const session of failedSessions) {
+        await sessionRepo.delete(session.id);
+      }
+
+      // Fetch the specific issues from GitHub
+      try {
+        const allIssues = await ghAdapter.listIssues(
+          config.github.owner,
+          config.github.repo,
+          { state: 'open' },
+        );
+        issues = allIssues.filter((i) => failedIssueNumbers.includes(i.number));
+      } catch (err) {
+        console.error(`Error fetching issues: ${err instanceof Error ? err.message : err}`);
+        process.exit(1);
+      }
+
+      if (issues!.length === 0) {
+        console.log('Failed issues are no longer open. Nothing to resume.');
+        process.exit(0);
+      }
+
+      // Tag with both new batch and resume reference
+      options.tag = [...(options.tag ?? []), batchTag, `resumed:${resumeBatchTag}`];
+      console.log(`Resuming ${issues!.length} issue(s) with new batch: ${batchId}\n`);
+    } else {
+      // Normal mode: fetch and filter issues
+      console.log('Fetching open issues from GitHub...');
+
+      try {
+        issues = await ghAdapter.listIssues(
+          config.github.owner,
+          config.github.repo,
+          {
+            labels: options.label,
+            state: 'open',
+          }
+        );
+      } catch (err) {
+        console.error(`Error fetching issues: ${err instanceof Error ? err.message : err}`);
+        process.exit(1);
+      }
+
+      // Apply exclude filter
+      if (options.exclude) {
+        const excludeSet = new Set(
+          options.exclude.split(',').map((n) => parseInt(n.trim(), 10))
+        );
+        issues = issues.filter((i) => !excludeSet.has(i.number));
+      }
+
+      // Filter out issues that already have PRs
+      console.log('Checking for existing PRs...');
+      const issuesWithPRs = await getIssuesWithExistingPRs(config.github.owner, config.github.repo);
+      if (issuesWithPRs.size > 0) {
         const before = issues.length;
-        issues = issues.filter((i) => !handledIssues.has(i.number));
+        issues = issues.filter((i) => !issuesWithPRs.has(i.number));
         const skipped = before - issues.length;
         if (skipped > 0) {
-          console.log(`Skipped ${skipped} issue(s) with active/completed sessions`);
+          console.log(`Skipped ${skipped} issue(s) with existing PRs`);
         }
       }
-    } catch {
-      // Sessions file may not exist yet
-    }
 
-    // Apply limit
-    const limit = parseInt(options.limit as unknown as string, 10);
-    if (issues.length > limit) {
-      console.log(`Found ${issues.length} issues, limiting to ${limit}`);
-      issues = issues.slice(0, limit);
-    } else {
-      console.log(`Found ${issues.length} issues`);
-    }
+      // Filter out issues with active/completed sessions
+      try {
+        const sessions = await sessionRepo.findAll();
+        const handledIssues = new Set(
+          sessions
+            .filter((s) => s.status === 'running' || s.status === 'completed')
+            .map((s) => s.issueNumber)
+            .filter((n): n is number => n !== null),
+        );
+        if (handledIssues.size > 0) {
+          const before = issues.length;
+          issues = issues.filter((i) => !handledIssues.has(i.number));
+          const skipped = before - issues.length;
+          if (skipped > 0) {
+            console.log(`Skipped ${skipped} issue(s) with active/completed sessions`);
+          }
+        }
+      } catch {
+        // Sessions file may not exist yet
+      }
 
-    if (issues.length === 0) {
-      console.log('No open issues found matching criteria.');
-      process.exit(0);
+      // Apply sort strategy
+      if (options.sort) {
+        const validStrategies = ['priority', 'newest', 'oldest'];
+        if (!validStrategies.includes(options.sort)) {
+          console.error(`Error: Invalid sort strategy "${options.sort}". Valid: ${validStrategies.join(', ')}`);
+          process.exit(1);
+        }
+        issues = sortIssues(issues, options.sort as SortStrategy);
+        console.log(`Sorted issues by: ${options.sort}`);
+      }
+
+      // Apply limit
+      const limit = parseInt(options.limit as unknown as string, 10);
+      if (issues.length > limit) {
+        console.log(`Found ${issues.length} issues, limiting to ${limit}`);
+        issues = issues.slice(0, limit);
+      } else {
+        console.log(`Found ${issues.length} issues`);
+      }
+
+      if (issues.length === 0) {
+        console.log('No open issues found matching criteria.');
+        process.exit(0);
+      }
+
+      // Auto-tag with batch ID
+      options.tag = [...(options.tag ?? []), batchTag];
     }
 
     // Parse conflict labels
@@ -458,6 +537,7 @@ export const bustercallCommand = new Command('bustercall')
     console.log('\x1b[36m║           Bustercall Summary             ║\x1b[0m');
     console.log('\x1b[36m╚══════════════════════════════════════════╝\x1b[0m\n');
 
+    console.log(`  Batch ID:       \x1b[36m${batchId}\x1b[0m`);
     console.log(`  Total issues:   ${items.length} (${safe.length} safe, ${conflicting.length} conflicting)`);
     console.log(`  \x1b[32mCompleted:\x1b[0m      ${completed}`);
     console.log(`  \x1b[31mFailed:\x1b[0m         ${failed}`);
@@ -497,6 +577,10 @@ export const bustercallCommand = new Command('bustercall')
       console.log('\n  Slack notification sent.');
     }
 
-    console.log('\n  View all sessions: \x1b[36mct status\x1b[0m');
+    if (failed > 0) {
+      console.log(`\n  Retry failed:      \x1b[36mct auto --resume ${batchId}\x1b[0m`);
+    }
+    console.log(`  Filter by batch:   \x1b[36mct status --tag ${batchTag}\x1b[0m`);
+    console.log('  View all sessions: \x1b[36mct status\x1b[0m');
     console.log('  Open dashboard:    \x1b[36mct web\x1b[0m\n');
   });
