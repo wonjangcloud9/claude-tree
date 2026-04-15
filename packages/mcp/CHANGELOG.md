@@ -1,5 +1,26 @@
 # @claudetree/mcp
 
+## 0.12.0
+
+### Minor Changes
+
+- feat: add ct cleanup command and update MCP tools with new capabilities
+
+  CLI:
+
+  - New `ct cleanup` command: smart session + worktree cleanup
+    - `--status completed|failed|both` to target specific session states
+    - `--older-than <duration>` (e.g., 24h, 7d) to only clean old sessions
+    - `--batch <batchId>` to clean specific bustercall batch
+    - `--dry-run` to preview changes
+
+  MCP:
+
+  - Updated `ct_bustercall` tool with resume, sort, review params
+  - New `ct_rerun` tool: rerun failed/completed sessions
+  - New `ct_tag` tool: add/remove session tags
+  - New `ct_cost` tool: cost analytics with batch tracking
+
 ## 0.11.4
 
 ### Patch Changes

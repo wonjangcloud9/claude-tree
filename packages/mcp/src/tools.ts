@@ -284,9 +284,12 @@ export function registerTools(server: McpServer): void {
         retry: z.number().min(0).max(5).optional().describe('Auto-retry failed sessions'),
         sequential: z.boolean().optional().describe('Force sequential execution'),
         tags: z.array(z.string()).optional().describe('Tags for sessions'),
+        resume: z.string().optional().describe('Resume a previous batch (retry failed sessions by batch ID)'),
+        sort: z.enum(['priority', 'newest', 'oldest']).optional().describe('Sort issues before processing'),
+        review: z.boolean().optional().describe('Auto-review after each session (Writer/Reviewer pattern)'),
       },
     },
-    async ({ label, limit, parallel, template, dryRun, retry, sequential, tags }) => {
+    async ({ label, limit, parallel, template, dryRun, retry, sequential, tags, resume, sort, review }) => {
       const args = ['auto'];
       if (label) args.push('--label', label);
       if (limit) args.push('--limit', String(limit));
@@ -296,6 +299,9 @@ export function registerTools(server: McpServer): void {
       if (retry) args.push('--retry', String(retry));
       if (sequential) args.push('--sequential');
       if (tags?.length) args.push('--tag', ...tags);
+      if (resume) args.push('--resume', resume);
+      if (sort) args.push('--sort', sort);
+      if (review) args.push('--review');
 
       const proc = spawn('claudetree', args, {
         cwd,
@@ -524,6 +530,125 @@ export function registerTools(server: McpServer): void {
         `Worktree dir: ${config.worktreeDir}`,
         `GitHub: ${config.github?.owner ?? '-'}/${config.github?.repo ?? '-'}`,
       ];
+
+      return textResult(lines.join('\n'));
+    },
+  );
+
+  // ──────────────────────────────────────
+  // ct_rerun - Rerun a session
+  // ──────────────────────────────────────
+  server.registerTool(
+    'ct_rerun',
+    {
+      description: 'Rerun a failed or completed session with the same issue, optionally overriding template/tags',
+      inputSchema: {
+        sessionId: z.string().describe('Session ID to rerun (prefix match supported)'),
+        template: z.enum(['bugfix', 'feature', 'refactor', 'review', 'docs']).optional().describe('Override session template'),
+        keep: z.boolean().optional().describe('Keep the original session (default: delete it)'),
+      },
+    },
+    async ({ sessionId, template, keep }) => {
+      const args = ['rerun', sessionId];
+      if (template) args.push('--template', template);
+      if (keep) args.push('--keep');
+
+      const proc = spawn('claudetree', args, { cwd, stdio: 'ignore', detached: true });
+      proc.unref();
+
+      return textResult(`Rerunning session ${sessionId} (PID: ${proc.pid ?? 'unknown'}).`);
+    },
+  );
+
+  // ──────────────────────────────────────
+  // ct_tag - Manage session tags
+  // ──────────────────────────────────────
+  server.registerTool(
+    'ct_tag',
+    {
+      description: 'Add or remove tags from a session',
+      inputSchema: {
+        sessionId: z.string().describe('Session ID (prefix match supported)'),
+        action: z.enum(['add', 'remove']).describe('Action: add or remove tags'),
+        tags: z.array(z.string()).describe('Tags to add or remove'),
+      },
+    },
+    async ({ sessionId, action, tags }) => {
+      const sessionRepo = new FileSessionRepository(join(cwd, CONFIG_DIR));
+      const sessions = await sessionRepo.findAll();
+      const session = sessions.find(
+        (s) => s.id === sessionId || s.id.startsWith(sessionId),
+      );
+
+      if (!session) {
+        return textResult(`Session "${sessionId}" not found.`);
+      }
+
+      if (action === 'add') {
+        const existing = new Set(session.tags ?? []);
+        for (const tag of tags) existing.add(tag);
+        session.tags = [...existing];
+      } else {
+        const toRemove = new Set(tags);
+        session.tags = (session.tags ?? []).filter((t) => !toRemove.has(t));
+      }
+
+      await sessionRepo.save(session);
+      return textResult(`Tags updated for ${session.id.slice(0, 8)}: [${session.tags.join(', ')}]`);
+    },
+  );
+
+  // ──────────────────────────────────────
+  // ct_cost - Cost analytics
+  // ──────────────────────────────────────
+  server.registerTool(
+    'ct_cost',
+    {
+      description: 'Get cost analytics with daily breakdown and per-batch tracking',
+      inputSchema: {
+        days: z.number().min(1).max(90).optional().describe('Number of days to analyze (default: 7)'),
+        batch: z.string().optional().describe('Filter by bustercall batch ID'),
+      },
+    },
+    async ({ days, batch }) => {
+      const sessionRepo = new FileSessionRepository(join(cwd, CONFIG_DIR));
+      let sessions = await sessionRepo.findAll();
+
+      if (batch) {
+        const batchTag = batch.startsWith('bustercall:') ? batch : `bustercall:${batch}`;
+        sessions = sessions.filter((s) => s.tags?.includes(batchTag));
+      }
+
+      const numDays = days ?? 7;
+      let totalCost = 0;
+      let totalTokens = 0;
+      let totalSessions = 0;
+      const batchCosts = new Map<string, number>();
+
+      for (const s of sessions) {
+        if (!s.usage) continue;
+        totalCost += s.usage.totalCostUsd;
+        totalTokens += s.usage.inputTokens + s.usage.outputTokens;
+        totalSessions++;
+
+        const bt = s.tags?.find((t) => t.startsWith('bustercall:'));
+        if (bt) batchCosts.set(bt, (batchCosts.get(bt) ?? 0) + s.usage.totalCostUsd);
+      }
+
+      const lines = [
+        `Cost Analytics (${numDays} days):`,
+        `Total cost: $${totalCost.toFixed(4)}`,
+        `Total tokens: ${totalTokens.toLocaleString()}`,
+        `Sessions with usage: ${totalSessions}`,
+        totalSessions > 0 ? `Avg cost/session: $${(totalCost / totalSessions).toFixed(4)}` : '',
+      ].filter(Boolean);
+
+      if (batchCosts.size > 0) {
+        lines.push('', 'Batch costs:');
+        for (const [bt, cost] of batchCosts) {
+          lines.push(`  ${bt}: $${cost.toFixed(4)}`);
+        }
+      }
 
       return textResult(lines.join('\n'));
     },

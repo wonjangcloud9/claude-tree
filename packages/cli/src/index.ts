@@ -7,6 +7,7 @@ import { batchCommand } from './commands/batch.js';
 import { bustercallCommand } from './commands/bustercall.js';
 import { chainCommand } from './commands/chain.js';
 import { cleanCommand } from './commands/clean.js';
+import { cleanupCommand } from './commands/cleanup.js';
 import { configCommand } from './commands/config.js';
 import { costCommand } from './commands/cost.js';
 import { diffCommand } from './commands/diff.js';
@@ -61,6 +62,7 @@ program.addCommand(watchCommand);
 program.addCommand(webCommand);
 program.addCommand(listCommand);
 program.addCommand(cleanCommand);
+program.addCommand(cleanupCommand);
 program.addCommand(archiveCommand);
 program.addCommand(doctorCommand);
 
