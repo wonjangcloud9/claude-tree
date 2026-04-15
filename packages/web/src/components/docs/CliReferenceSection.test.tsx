@@ -100,6 +100,41 @@ describe('CliReferenceSection', () => {
     expect(document.getElementById('ct-web')).toBeInTheDocument();
   });
 
+  it('should render ct inspect command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-inspect')).toBeInTheDocument();
+  });
+
+  it('should render ct cost command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-cost')).toBeInTheDocument();
+  });
+
+  it('should render ct tag command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-tag')).toBeInTheDocument();
+  });
+
+  it('should render ct rerun command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-rerun')).toBeInTheDocument();
+  });
+
+  it('should render ct cleanup command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-cleanup')).toBeInTheDocument();
+  });
+
+  it('should render ct report command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-report')).toBeInTheDocument();
+  });
+
+  it('should render ct completion command section', () => {
+    render(<CliReferenceSection />);
+    expect(document.getElementById('ct-completion')).toBeInTheDocument();
+  });
+
   it('should render TDD mode documentation', () => {
     render(<CliReferenceSection />);
     expect(screen.getByRole('heading', { name: /tdd mode/i })).toBeInTheDocument();
