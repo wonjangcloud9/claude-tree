@@ -12,6 +12,7 @@ interface StatusOptions {
   health: boolean;
   tag?: string[];
   state?: string;
+  batch?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -87,6 +88,7 @@ export const statusCommand = new Command('status')
   .option('--health', 'Check process health and mark zombie sessions as failed', false)
   .option('--tag <tags...>', 'Filter sessions by tag')
   .option('-s, --state <status>', 'Filter sessions by status (pending, running, paused, completed, failed)')
+  .option('-b, --batch <batchId>', 'Filter sessions by bustercall batch ID')
   .action(async (options: StatusOptions) => {
     const cwd = process.cwd();
     const configDir = join(cwd, CONFIG_DIR);
@@ -111,6 +113,16 @@ export const statusCommand = new Command('status')
           process.exit(1);
         }
         sessions = sessions.filter((s) => s.status === options.state);
+      }
+
+      // Filter by batch ID
+      if (options.batch) {
+        const batchTag = options.batch.startsWith('bustercall:')
+          ? options.batch
+          : `bustercall:${options.batch}`;
+        sessions = sessions.filter(
+          (s) => s.tags?.includes(batchTag),
+        );
       }
 
       // Filter by tags if specified
