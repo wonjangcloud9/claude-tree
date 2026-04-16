@@ -655,6 +655,62 @@ export function registerTools(server: McpServer): void {
   );
 
   // ──────────────────────────────────────
+  // ct_doctor - Environment health check
+  // ──────────────────────────────────────
+  server.registerTool(
+    'ct_doctor',
+    {
+      description: 'Run environment diagnostics: check Node, Git, Claude CLI, GitHub auth, config, disk, stale sessions',
+      inputSchema: {},
+    },
+    async () => {
+      const args = ['doctor', '--json'];
+      return new Promise((resolve) => {
+        const proc = spawn('claudetree', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+        let stdout = '';
+        proc.stdout?.on('data', (d: Buffer) => { stdout += d.toString(); });
+        proc.on('close', () => {
+          resolve(textResult(stdout || 'Doctor check completed (no output).'));
+        });
+        proc.on('error', () => {
+          resolve(textResult('Failed to run ct doctor. Is claudetree installed?'));
+        });
+      });
+    },
+  );
+
+  // ──────────────────────────────────────
+  // ct_cleanup - Clean up sessions and worktrees
+  // ──────────────────────────────────────
+  server.registerTool(
+    'ct_cleanup',
+    {
+      description: 'Clean up completed/failed sessions and orphaned worktrees',
+      inputSchema: {
+        dryRun: z.boolean().optional().describe('Preview cleanup without executing (default: true)'),
+        status: z.enum(['completed', 'failed', 'all']).optional().describe('Filter by status (default: all)'),
+      },
+    },
+    async ({ dryRun, status }) => {
+      const args = ['cleanup'];
+      if (dryRun !== false) args.push('--dry-run');
+      if (status) args.push('--status', status);
+
+      return new Promise((resolve) => {
+        const proc = spawn('claudetree', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+        let stdout = '';
+        proc.stdout?.on('data', (d: Buffer) => { stdout += d.toString(); });
+        proc.on('close', () => {
+          resolve(textResult(stdout || 'Cleanup completed.'));
+        });
+        proc.on('error', () => {
+          resolve(textResult('Failed to run ct cleanup. Is claudetree installed?'));
+        });
+      });
+    },
+  );
+
+  // ──────────────────────────────────────
   // ct_summary - Get work activity summary
   // ──────────────────────────────────────
   server.registerTool(

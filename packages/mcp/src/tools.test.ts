@@ -70,7 +70,7 @@ describe('MCP Tools', () => {
     expect(tools.has('ct_rerun')).toBe(true);
     expect(tools.has('ct_tag')).toBe(true);
     expect(tools.has('ct_cost')).toBe(true);
-    expect(tools.size).toBe(14);
+    expect(tools.size).toBe(16);
   });
 
   describe('ct_sessions_list', () => {
