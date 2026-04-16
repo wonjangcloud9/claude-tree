@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { join } from 'node:path';
 import { access } from 'node:fs/promises';
 import { FileSessionRepository, ClaudeSessionAdapter } from '@claudetree/core';
+import { exitNotInitialized } from '../errors.js';
 import type { ProgressStep, SessionProgress, Session } from '@claudetree/shared';
 
 const CONFIG_DIR = '.claudetree';
@@ -96,8 +97,7 @@ export const statusCommand = new Command('status')
     try {
       await access(configDir);
     } catch {
-      console.error('Error: claudetree not initialized. Run "claudetree init" first.');
-      process.exit(1);
+      exitNotInitialized();
     }
 
     const sessionRepo = new FileSessionRepository(configDir);

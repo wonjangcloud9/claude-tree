@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { access } from 'node:fs/promises';
 import { exec as execCb } from 'node:child_process';
 import { FileSessionRepository } from '@claudetree/core';
+import { exitNotInitialized } from '../errors.js';
 import type { Session } from '@claudetree/shared';
 
 const CONFIG_DIR = '.claudetree';
@@ -74,8 +75,7 @@ export const diffCommand = new Command('diff')
     try {
       await access(configDir);
     } catch {
-      console.error('Error: claudetree not initialized. Run "claudetree init" first.');
-      process.exit(1);
+      exitNotInitialized();
     }
 
     const sessionRepo = new FileSessionRepository(configDir);

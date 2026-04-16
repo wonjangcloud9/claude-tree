@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { access, readFile } from 'node:fs/promises';
 import { exec as execCb } from 'node:child_process';
 import { FileSessionRepository } from '@claudetree/core';
+import { exitNotInitialized } from '../errors.js';
 import type { Session } from '@claudetree/shared';
 
 function execAsync(cmd: string, opts?: { cwd?: string }): Promise<{ stdout: string; stderr: string }> {
@@ -236,8 +237,7 @@ export const prCommand = new Command('pr')
     const config = await loadConfig(cwd);
 
     if (!config) {
-      console.error('Error: claudetree not initialized. Run "claudetree init" first.');
-      process.exit(1);
+      exitNotInitialized();
     }
 
     const sessionRepo = new FileSessionRepository(join(cwd, CONFIG_DIR));

@@ -61,7 +61,7 @@ describe('statusCommand', () => {
       ).rejects.toThrow('process.exit called');
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error: claudetree not initialized. Run "claudetree init" first.'
+        expect.stringContaining('not initialized')
       );
       expect(process.exit).toHaveBeenCalledWith(1);
     });
