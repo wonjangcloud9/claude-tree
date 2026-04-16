@@ -1,7 +1,8 @@
 import { Command } from 'commander';
 import { join } from 'node:path';
-import { access, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import { FileSessionRepository, GitWorktreeAdapter } from '@claudetree/core';
+import { exitNotInitialized, exitSessionNotFound } from '../errors.js';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -20,10 +21,10 @@ export const stopCommand = new Command('stop')
     const configDir = join(cwd, CONFIG_DIR);
 
     try {
+      const { access } = await import('node:fs/promises');
       await access(configDir);
     } catch {
-      console.error('Error: claudetree not initialized. Run "claudetree init" first.');
-      process.exit(1);
+      exitNotInitialized();
     }
 
     const sessionRepo = new FileSessionRepository(configDir);
@@ -39,8 +40,7 @@ export const stopCommand = new Command('stop')
       : sessions.filter((s) => s.id.startsWith(sessionId ?? ''));
 
     if (toStop.length === 0) {
-      console.error(`No session found matching: ${sessionId}`);
-      process.exit(1);
+      exitSessionNotFound(sessionId ?? '');
     }
 
     for (const session of toStop) {

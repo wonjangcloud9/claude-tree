@@ -86,7 +86,7 @@ describe('stopCommand', () => {
       );
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error: claudetree not initialized. Run "claudetree init" first.'
+        expect.stringContaining('not initialized')
       );
       expect(process.exit).toHaveBeenCalledWith(1);
     });
@@ -142,7 +142,7 @@ describe('stopCommand', () => {
         ).rejects.toThrow('process.exit called');
 
         expect(consoleErrorSpy).toHaveBeenCalledWith(
-          'No session found matching: nonexistent'
+          expect.stringContaining('nonexistent')
         );
         expect(process.exit).toHaveBeenCalledWith(1);
       });

@@ -9,6 +9,7 @@ import {
   type ClaudeOutputEvent,
 } from '@claudetree/core';
 import type { EventType } from '@claudetree/shared';
+import { exitNotInitialized, exitWithError } from '../errors.js';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -27,10 +28,7 @@ export const resumeCommand = new Command('resume')
     try {
       await access(configDir);
     } catch {
-      console.error(
-        'Error: claudetree not initialized. Run "claudetree init" first.'
-      );
-      process.exit(1);
+      exitNotInitialized();
     }
 
     const sessionRepo = new FileSessionRepository(configDir);
@@ -62,26 +60,27 @@ export const resumeCommand = new Command('resume')
     }
 
     if (!session.claudeSessionId) {
-      console.error('Error: Session has no Claude session ID. Cannot resume.');
-      console.log(
-        'Hint: This session may not have captured its session ID before pausing.'
+      exitWithError(
+        'Session has no Claude session ID. Cannot resume.',
+        'This session may not have captured its ID before pausing. Try: ct rerun ' + sessionIdArg,
       );
-      process.exit(1);
     }
 
     if (!session.worktreePath) {
-      console.error('Error: Session has no worktree path. Cannot resume.');
-      process.exit(1);
+      exitWithError(
+        'Session has no worktree path. Cannot resume.',
+        'Try: ct rerun ' + sessionIdArg,
+      );
     }
 
     // Check if worktree still exists
     try {
       await access(session.worktreePath);
     } catch {
-      console.error(
-        `Error: Worktree no longer exists: ${session.worktreePath}`
+      exitWithError(
+        `Worktree no longer exists: ${session.worktreePath}`,
+        'Run: ct cleanup  to clean up, then: ct rerun ' + sessionIdArg,
       );
-      process.exit(1);
     }
 
     console.log(`Resuming session: ${session.id.slice(0, 8)}`);

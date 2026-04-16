@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { access } from 'node:fs/promises';
 import { FileEventRepository, FileSessionRepository } from '@claudetree/core';
 import type { EventType, SessionEvent } from '@claudetree/shared';
+import { exitNotInitialized, exitSessionNotFound } from '../errors.js';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -72,8 +73,7 @@ export const logCommand = new Command('log')
     try {
       await access(configDir);
     } catch {
-      console.error('Error: claudetree not initialized. Run "ct init" first.');
-      process.exit(1);
+      exitNotInitialized();
     }
 
     const sessionRepo = new FileSessionRepository(configDir);
@@ -81,9 +81,7 @@ export const logCommand = new Command('log')
 
     const sessionId = await findSessionId(sessionRepo, session);
     if (!sessionId) {
-      console.error(`Error: No session found matching "${session}".`);
-      console.error('Use "ct status" to see available sessions.');
-      process.exit(1);
+      exitSessionNotFound(session);
     }
 
     const limit = parseInt(options.lines, 10) || 50;

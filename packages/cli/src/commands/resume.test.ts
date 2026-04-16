@@ -95,7 +95,7 @@ describe('resumeCommand', () => {
       ).rejects.toThrow('process.exit called');
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error: claudetree not initialized. Run "claudetree init" first.'
+        expect.stringContaining('not initialized')
       );
       expect(process.exit).toHaveBeenCalledWith(1);
     });
@@ -166,7 +166,7 @@ describe('resumeCommand', () => {
         ).rejects.toThrow('process.exit called');
 
         expect(consoleErrorSpy).toHaveBeenCalledWith(
-          'Error: Session has no Claude session ID. Cannot resume.'
+          expect.stringContaining('no Claude session ID')
         );
         expect(process.exit).toHaveBeenCalledWith(1);
       });
@@ -191,7 +191,7 @@ describe('resumeCommand', () => {
         ).rejects.toThrow('process.exit called');
 
         expect(consoleErrorSpy).toHaveBeenCalledWith(
-          'Error: Session has no worktree path. Cannot resume.'
+          expect.stringContaining('no worktree path')
         );
         expect(process.exit).toHaveBeenCalledWith(1);
       });
@@ -216,7 +216,7 @@ describe('resumeCommand', () => {
         ).rejects.toThrow('process.exit called');
 
         expect(consoleErrorSpy).toHaveBeenCalledWith(
-          'Error: Worktree no longer exists: /nonexistent/path'
+          expect.stringContaining('no longer exists')
         );
         expect(process.exit).toHaveBeenCalledWith(1);
       });

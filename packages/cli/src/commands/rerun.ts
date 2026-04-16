@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { access } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { FileSessionRepository } from '@claudetree/core';
+import { exitNotInitialized, exitSessionNotFound, exitWithError } from '../errors.js';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -27,8 +28,7 @@ export const rerunCommand = new Command('rerun')
     try {
       await access(configDir);
     } catch {
-      console.error('Error: claudetree not initialized. Run "claudetree init" first.');
-      process.exit(1);
+      exitNotInitialized();
     }
 
     const sessionRepo = new FileSessionRepository(configDir);
@@ -39,13 +39,14 @@ export const rerunCommand = new Command('rerun')
     );
 
     if (!session) {
-      console.error(`Error: Session "${sessionIdArg}" not found.`);
-      process.exit(1);
+      exitSessionNotFound(sessionIdArg);
     }
 
     if (session.status === 'running' || session.status === 'pending') {
-      console.error(`Error: Session is still ${session.status}. Use "ct stop" first or wait for completion.`);
-      process.exit(1);
+      exitWithError(
+        `Session is still ${session.status}.`,
+        `Run: ct stop ${sessionIdArg}  first, or wait for completion`,
+      );
     }
 
     const issueOrPrompt = session.issueNumber
@@ -53,8 +54,10 @@ export const rerunCommand = new Command('rerun')
       : session.prompt;
 
     if (!issueOrPrompt) {
-      console.error('Error: Session has no issue number or prompt. Cannot rerun.');
-      process.exit(1);
+      exitWithError(
+        'Session has no issue number or prompt. Cannot rerun.',
+        'Start a new session instead: ct start <issue-url>',
+      );
     }
 
     // Build args for ct start

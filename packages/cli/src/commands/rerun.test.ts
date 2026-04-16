@@ -139,7 +139,7 @@ describe('rerunCommand', () => {
     ).rejects.toThrow('process.exit');
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('not found'),
+      expect.stringContaining('No session found'),
     );
   });
 
