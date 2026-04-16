@@ -9,6 +9,13 @@ vi.mock('node:child_process', () => ({
   execSync: (...args: unknown[]) => mockExecSync(...args),
 }));
 
+const mockFindAll = vi.fn();
+vi.mock('@claudetree/core', () => ({
+  FileSessionRepository: class {
+    findAll = mockFindAll;
+  },
+}));
+
 import { doctorCommand } from './doctor.js';
 
 describe('doctorCommand', () => {
@@ -27,6 +34,8 @@ describe('doctorCommand', () => {
     originalEnv = { ...process.env };
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     mockExecSync.mockReset();
+    mockFindAll.mockReset();
+    mockFindAll.mockResolvedValue([]);
   });
 
   afterEach(async () => {
@@ -348,6 +357,75 @@ describe('doctorCommand', () => {
       // In quiet mode, only warnings/failures should be logged
       // Check that it completes without error
       expect(process.exit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Orphaned Worktrees check', () => {
+    it('should pass when no worktree directory exists', async () => {
+      mockExecSync.mockImplementation((cmd: string) => {
+        if (cmd === 'git rev-parse --git-dir') return '.git';
+        if (cmd === 'claude --version') return 'claude 1.0.0';
+        if (cmd === 'gh --version') return 'gh version 2.0.0';
+        if (cmd === 'gh auth status') return '';
+        throw new Error(`Unknown command: ${cmd}`);
+      });
+      await mkdir(join(testDir, '.claudetree'), { recursive: true });
+      await writeFile(join(testDir, '.claudetree', 'config.json'), '{}');
+
+      await doctorCommand.parseAsync(['node', 'test']);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Orphaned Worktrees')
+      );
+    });
+  });
+
+  describe('Stale Sessions check', () => {
+    it('should pass when no running sessions exist', async () => {
+      mockExecSync.mockImplementation((cmd: string) => {
+        if (cmd === 'git rev-parse --git-dir') return '.git';
+        if (cmd === 'claude --version') return 'claude 1.0.0';
+        if (cmd === 'gh --version') return 'gh version 2.0.0';
+        if (cmd === 'gh auth status') return '';
+        throw new Error(`Unknown command: ${cmd}`);
+      });
+      await mkdir(join(testDir, '.claudetree'), { recursive: true });
+      await writeFile(join(testDir, '.claudetree', 'config.json'), '{}');
+      mockFindAll.mockResolvedValue([]);
+
+      await doctorCommand.parseAsync(['node', 'test']);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Stale Sessions')
+      );
+    });
+
+    it('should warn about stale running sessions', async () => {
+      mockExecSync.mockImplementation((cmd: string) => {
+        if (cmd === 'git rev-parse --git-dir') return '.git';
+        if (cmd === 'claude --version') return 'claude 1.0.0';
+        if (cmd === 'gh --version') return 'gh version 2.0.0';
+        if (cmd === 'gh auth status') return '';
+        throw new Error(`Unknown command: ${cmd}`);
+      });
+      await mkdir(join(testDir, '.claudetree'), { recursive: true });
+      await writeFile(join(testDir, '.claudetree', 'config.json'), '{}');
+      process.env.ANTHROPIC_API_KEY = 'sk-ant-test';
+      mockFindAll.mockResolvedValue([
+        {
+          id: 'stale-session',
+          status: 'running',
+          lastHeartbeat: null,
+          updatedAt: new Date('2024-01-01'),
+          createdAt: new Date('2024-01-01'),
+        },
+      ]);
+
+      await doctorCommand.parseAsync(['node', 'test']);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('running for >24h')
+      );
     });
   });
 

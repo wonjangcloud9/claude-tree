@@ -1,8 +1,9 @@
 import { Command } from 'commander';
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
-import { access, readFile } from 'node:fs/promises';
+import { access, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { FileSessionRepository } from '@claudetree/core';
 
 const require = createRequire(import.meta.url);
 const { version: CURRENT_VERSION } = require('../../package.json') as { version: string };
@@ -271,6 +272,96 @@ async function checkLatestVersion(): Promise<CheckResult> {
   }
 }
 
+async function checkOrphanedWorktrees(): Promise<CheckResult> {
+  const cwd = process.cwd();
+  const configDir = join(cwd, CONFIG_DIR);
+  const worktreeDir = join(cwd, '.worktrees');
+
+  try {
+    await access(configDir);
+    await access(worktreeDir);
+  } catch {
+    return { name: 'Orphaned Worktrees', status: 'pass', message: 'No worktree directory' };
+  }
+
+  try {
+    const repo = new FileSessionRepository(configDir);
+    const sessions = await repo.findAll();
+    const sessionPaths = new Set(sessions.map((s) => s.worktreePath).filter(Boolean));
+
+    const entries = await readdir(worktreeDir);
+    const dirs: string[] = [];
+    for (const entry of entries) {
+      const fullPath = join(worktreeDir, entry);
+      const s = await stat(fullPath);
+      if (s.isDirectory()) dirs.push(fullPath);
+    }
+
+    const orphaned = dirs.filter((d) => !sessionPaths.has(d));
+
+    if (orphaned.length > 0) {
+      return {
+        name: 'Orphaned Worktrees',
+        status: 'warn',
+        message: `${orphaned.length} worktree(s) without matching sessions`,
+        fix: 'Run: ct cleanup --dry-run  to review',
+      };
+    }
+    return {
+      name: 'Orphaned Worktrees',
+      status: 'pass',
+      message: `${dirs.length} worktree(s), all linked to sessions`,
+    };
+  } catch {
+    return { name: 'Orphaned Worktrees', status: 'pass', message: 'Check skipped' };
+  }
+}
+
+async function checkStaleSessions(): Promise<CheckResult> {
+  const cwd = process.cwd();
+  const configDir = join(cwd, CONFIG_DIR);
+
+  try {
+    await access(configDir);
+  } catch {
+    return { name: 'Stale Sessions', status: 'pass', message: 'Not initialized' };
+  }
+
+  try {
+    const repo = new FileSessionRepository(configDir);
+    const sessions = await repo.findAll();
+    const running = sessions.filter((s) => s.status === 'running');
+
+    if (running.length === 0) {
+      return { name: 'Stale Sessions', status: 'pass', message: 'No running sessions' };
+    }
+
+    const now = Date.now();
+    const staleThreshold = 24 * 60 * 60 * 1000;
+    const stale = running.filter((s) => {
+      const lastActive = s.lastHeartbeat ?? s.updatedAt ?? s.createdAt;
+      return now - new Date(lastActive).getTime() > staleThreshold;
+    });
+
+    if (stale.length > 0) {
+      return {
+        name: 'Stale Sessions',
+        status: 'warn',
+        message: `${stale.length} session(s) running for >24h (may be zombies)`,
+        fix: 'Run: ct stop --all  to stop stale sessions',
+      };
+    }
+
+    return {
+      name: 'Stale Sessions',
+      status: 'pass',
+      message: `${running.length} running, all active within 24h`,
+    };
+  } catch {
+    return { name: 'Stale Sessions', status: 'pass', message: 'Check skipped' };
+  }
+}
+
 function printResult(result: CheckResult): void {
   const icon = ICONS[result.status];
   console.log(`  ${icon} ${COLORS.bold}${result.name}${COLORS.reset}`);
@@ -298,6 +389,8 @@ export const doctorCommand = new Command('doctor')
       checkClaudetreeInit,
       checkConfigValidity,
       checkDiskSpace,
+      checkOrphanedWorktrees,
+      checkStaleSessions,
     ];
 
     const results: CheckResult[] = [];
