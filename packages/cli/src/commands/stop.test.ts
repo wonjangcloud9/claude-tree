@@ -7,12 +7,16 @@ import type { Session } from '@claudetree/shared';
 // Create mock functions
 const mockFindAll = vi.fn();
 const mockSave = vi.fn();
+const mockRemove = vi.fn();
 
-// Mock FileSessionRepository
+// Mock FileSessionRepository and GitWorktreeAdapter
 vi.mock('@claudetree/core', () => ({
   FileSessionRepository: class {
     findAll = mockFindAll;
     save = mockSave;
+  },
+  GitWorktreeAdapter: class {
+    remove = mockRemove;
   },
 }));
 
@@ -58,6 +62,7 @@ describe('stopCommand', () => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockFindAll.mockReset();
     mockSave.mockReset();
+    mockRemove.mockReset();
   });
 
   afterEach(async () => {
@@ -159,6 +164,71 @@ describe('stopCommand', () => {
         expect(consoleLogSpy).toHaveBeenCalledWith(
           expect.stringContaining('Stopped 3 session(s)')
         );
+      });
+    });
+
+    describe('worktree removal', () => {
+      it('should attempt worktree removal when worktreePath exists', async () => {
+        const wtPath = join(testDir, 'fake-worktree');
+        await mkdir(wtPath, { recursive: true });
+        const session = createMockSession({
+          id: 'test-session',
+          worktreePath: wtPath,
+        });
+        mockFindAll.mockResolvedValue([session]);
+        mockSave.mockResolvedValue(undefined);
+        mockRemove.mockResolvedValue(undefined);
+
+        await stopCommand.parseAsync(['node', 'test', 'test']);
+
+        expect(mockRemove).toHaveBeenCalledWith(wtPath, true);
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Worktree removed')
+        );
+      });
+
+      it('should handle missing worktree gracefully', async () => {
+        const session = createMockSession({
+          id: 'test-session',
+          worktreePath: '/nonexistent/worktree/path',
+        });
+        mockFindAll.mockResolvedValue([session]);
+        mockSave.mockResolvedValue(undefined);
+
+        await stopCommand.parseAsync(['node', 'test', 'test']);
+
+        expect(mockRemove).not.toHaveBeenCalled();
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Worktree already removed')
+        );
+      });
+
+      it('should skip worktree removal with --keep-worktree', async () => {
+        const wtPath = join(testDir, 'keep-worktree');
+        await mkdir(wtPath, { recursive: true });
+        const session = createMockSession({
+          id: 'test-session',
+          worktreePath: wtPath,
+        });
+        mockFindAll.mockResolvedValue([session]);
+        mockSave.mockResolvedValue(undefined);
+
+        await stopCommand.parseAsync(['node', 'test', '--keep-worktree', 'test']);
+
+        expect(mockRemove).not.toHaveBeenCalled();
+      });
+
+      it('should skip worktree removal when worktreePath is null', async () => {
+        const session = createMockSession({
+          id: 'test-session',
+          worktreePath: null,
+        });
+        mockFindAll.mockResolvedValue([session]);
+        mockSave.mockResolvedValue(undefined);
+
+        await stopCommand.parseAsync(['node', 'test', 'test']);
+
+        expect(mockRemove).not.toHaveBeenCalled();
       });
     });
 

@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { join } from 'node:path';
-import { access } from 'node:fs/promises';
-import { FileSessionRepository } from '@claudetree/core';
+import { access, stat } from 'node:fs/promises';
+import { FileSessionRepository, GitWorktreeAdapter } from '@claudetree/core';
 
 const CONFIG_DIR = '.claudetree';
 
@@ -52,12 +52,14 @@ export const stopCommand = new Command('stop')
       await sessionRepo.save(session);
 
       // Optionally remove worktree
-      if (!options.keepWorktree) {
+      if (!options.keepWorktree && session.worktreePath) {
         try {
-          // Note: We'd need to store the actual worktree path
-          console.log(`  Session stopped. Worktree kept (use --keep-worktree=false to remove).`);
+          await stat(session.worktreePath);
+          const adapter = new GitWorktreeAdapter(cwd);
+          await adapter.remove(session.worktreePath, true);
+          console.log(`  Worktree removed: ${session.worktreePath}`);
         } catch {
-          console.log(`  Warning: Could not remove worktree.`);
+          console.log(`  Worktree already removed or not found.`);
         }
       }
 
