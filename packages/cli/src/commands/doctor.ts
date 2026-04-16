@@ -374,9 +374,12 @@ function printResult(result: CheckResult): void {
 export const doctorCommand = new Command('doctor')
   .description('Verify setup: Node, Git, Claude CLI, GitHub auth')
   .option('-q, --quiet', 'Only show failures and warnings', false)
-  .action(async (options: { quiet: boolean }) => {
-    console.log(`\n${COLORS.bold}claudetree doctor${COLORS.reset}\n`);
-    console.log(`${COLORS.dim}Checking your environment...${COLORS.reset}\n`);
+  .option('--json', 'Output results as JSON', false)
+  .action(async (options: { quiet: boolean; json: boolean }) => {
+    if (!options.json) {
+      console.log(`\n${COLORS.bold}claudetree doctor${COLORS.reset}\n`);
+      console.log(`${COLORS.dim}Checking your environment...${COLORS.reset}\n`);
+    }
 
     const checks = [
       checkLatestVersion,
@@ -399,7 +402,7 @@ export const doctorCommand = new Command('doctor')
       const result = await check();
       results.push(result);
 
-      if (!options.quiet || result.status !== 'pass') {
+      if (!options.json && (!options.quiet || result.status !== 'pass')) {
         printResult(result);
         console.log();
       }
@@ -408,6 +411,18 @@ export const doctorCommand = new Command('doctor')
     const fails = results.filter((r) => r.status === 'fail');
     const warns = results.filter((r) => r.status === 'warn');
     const passes = results.filter((r) => r.status === 'pass');
+
+    if (options.json) {
+      console.log(JSON.stringify({
+        passed: passes.length,
+        warnings: warns.length,
+        failed: fails.length,
+        ready: fails.length === 0,
+        checks: results,
+      }, null, 2));
+      if (fails.length > 0) process.exit(1);
+      return;
+    }
 
     console.log(`${COLORS.dim}${'─'.repeat(40)}${COLORS.reset}`);
     console.log(
